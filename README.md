@@ -102,4 +102,4 @@ The GitHub Actions workflow automatically handles:
 - Creating IPA file
 - Uploading to TestFlight
 
-After TestFlight processing, submit for App Store review through App Store Connect.
+After TestFlight processing, submit for App Store review through App Store Connect.# Build triggered Wed 13 Aug 2025 17:25:27 BST
