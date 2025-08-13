@@ -7,31 +7,31 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A1234567890ABCDEF001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF000 /* AppDelegate.swift */; };
-		A1234567890ABCDEF003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF002 /* SceneDelegate.swift */; };
-		A1234567890ABCDEF005 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF004 /* ViewController.swift */; };
-		A1234567890ABCDEF008 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF006 /* Main.storyboard */; };
-		A1234567890ABCDEF00A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF009 /* Assets.xcassets */; };
-		A1234567890ABCDEF00D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF00B /* LaunchScreen.storyboard */; };
-		A1234567890ABCDEF00F /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF00E /* NetworkMonitor.swift */; };
-		A1234567890ABCDEF011 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1234567890ABCDEF010 /* ProfileManager.swift */; };
+		A1001 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000 /* AppDelegate.swift */; };
+		A1003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1002 /* SceneDelegate.swift */; };
+		A1005 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1004 /* ViewController.swift */; };
+		A1007 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1006 /* Main.storyboard */; };
+		A1009 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1008 /* Assets.xcassets */; };
+		A1011 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A1010 /* LaunchScreen.storyboard */; };
+		A1013 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1012 /* NetworkMonitor.swift */; };
+		A1015 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1014 /* ProfileManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A1234567890ABCDEF000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		A1234567890ABCDEF002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
-		A1234567890ABCDEF004 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		A1234567890ABCDEF007 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
-		A1234567890ABCDEF009 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		A1234567890ABCDEF00C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		A1234567890ABCDEF00E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A1234567890ABCDEF00E /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
-		A1234567890ABCDEF010 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
-		A1234567890ABCDEF999 /* ACCNeoX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ACCNeoX.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1000 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		A1002 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		A1004 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		A1007 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		A1008 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1011 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		A1012 /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
+		A1014 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
+		A1016 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1999 /* ACCNeoX.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ACCNeoX.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A1234567890ABCDEF996 /* Frameworks */ = {
+		A1996 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -41,34 +41,34 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A1234567890ABCDEF991 = {
+		A1991 = {
 			isa = PBXGroup;
 			children = (
-				A1234567890ABCDEF99C /* ACCNeoX */,
-				A1234567890ABCDEF99A /* Products */,
+				A199C /* ACCNeoX */,
+				A199A /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A1234567890ABCDEF99A /* Products */ = {
+		A199A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A1234567890ABCDEF999 /* ACCNeoX.app */,
+				A1999 /* ACCNeoX.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A1234567890ABCDEF99C /* ACCNeoX */ = {
+		A199C /* ACCNeoX */ = {
 			isa = PBXGroup;
 			children = (
-				A1234567890ABCDEF000 /* AppDelegate.swift */,
-				A1234567890ABCDEF002 /* SceneDelegate.swift */,
-				A1234567890ABCDEF004 /* ViewController.swift */,
-				A1234567890ABCDEF00E /* NetworkMonitor.swift */,
-				A1234567890ABCDEF010 /* ProfileManager.swift */,
-				A1234567890ABCDEF006 /* Main.storyboard */,
-				A1234567890ABCDEF009 /* Assets.xcassets */,
-				A1234567890ABCDEF00B /* LaunchScreen.storyboard */,
-				A1234567890ABCDEF00E /* Info.plist */,
+				A1000 /* AppDelegate.swift */,
+				A1002 /* SceneDelegate.swift */,
+				A1004 /* ViewController.swift */,
+				A1012 /* NetworkMonitor.swift */,
+				A1014 /* ProfileManager.swift */,
+				A1006 /* Main.storyboard */,
+				A1008 /* Assets.xcassets */,
+				A1010 /* LaunchScreen.storyboard */,
+				A1016 /* Info.plist */,
 			);
 			path = ACCNeoX;
 			sourceTree = "<group>";
@@ -76,13 +76,13 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A1234567890ABCDEF998 /* ACCNeoX */ = {
+		A1998 /* ACCNeoX */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A1234567890ABCDEF9AD /* Build configuration list for PBXNativeTarget "ACCNeoX" */;
+			buildConfigurationList = A19AD /* Build configuration list for PBXNativeTarget "ACCNeoX" */;
 			buildPhases = (
-				A1234567890ABCDEF995 /* Sources */,
-				A1234567890ABCDEF996 /* Frameworks */,
-				A1234567890ABCDEF997 /* Resources */,
+				A1995 /* Sources */,
+				A1996 /* Frameworks */,
+				A1997 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -90,25 +90,25 @@
 			);
 			name = ACCNeoX;
 			productName = ACCNeoX;
-			productReference = A1234567890ABCDEF999 /* ACCNeoX.app */;
+			productReference = A1999 /* ACCNeoX.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		A1234567890ABCDEF992 /* Project object */ = {
+		A1992 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1500;
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
-					A1234567890ABCDEF998 = {
+					A1998 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
 			};
-			buildConfigurationList = A1234567890ABCDEF995 /* Build configuration list for PBXProject "ACCNeoX" */;
+			buildConfigurationList = A1995 /* Build configuration list for PBXProject "ACCNeoX" */;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -116,57 +116,57 @@
 				en,
 				Base,
 			);
-			mainGroup = A1234567890ABCDEF991;
-			productRefGroup = A1234567890ABCDEF99A /* Products */;
+			mainGroup = A1991;
+			productRefGroup = A199A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A1234567890ABCDEF998 /* ACCNeoX */,
+				A1998 /* ACCNeoX */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A1234567890ABCDEF997 /* Resources */ = {
+		A1997 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1234567890ABCDEF00D /* LaunchScreen.storyboard in Resources */,
-				A1234567890ABCDEF00A /* Assets.xcassets in Resources */,
-				A1234567890ABCDEF008 /* Main.storyboard in Resources */,
+				A1011 /* LaunchScreen.storyboard in Resources */,
+				A1009 /* Assets.xcassets in Resources */,
+				A1007 /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A1234567890ABCDEF995 /* Sources */ = {
+		A1995 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A1234567890ABCDEF005 /* ViewController.swift in Sources */,
-				A1234567890ABCDEF001 /* AppDelegate.swift in Sources */,
-				A1234567890ABCDEF003 /* SceneDelegate.swift in Sources */,
-				A1234567890ABCDEF00F /* NetworkMonitor.swift in Sources */,
-				A1234567890ABCDEF011 /* ProfileManager.swift in Sources */,
+				A1005 /* ViewController.swift in Sources */,
+				A1001 /* AppDelegate.swift in Sources */,
+				A1003 /* SceneDelegate.swift in Sources */,
+				A1013 /* NetworkMonitor.swift in Sources */,
+				A1015 /* ProfileManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
-		A1234567890ABCDEF006 /* Main.storyboard */ = {
+		A1006 /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
-				A1234567890ABCDEF007 /* Base */,
+				A1007 /* Base */,
 			);
 			name = Main.storyboard;
 			sourceTree = "<group>";
 		};
-		A1234567890ABCDEF00B /* LaunchScreen.storyboard */ = {
+		A1010 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
-				A1234567890ABCDEF00C /* Base */,
+				A1011 /* Base */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";
@@ -174,7 +174,7 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
-		A1234567890ABCDEF9AB /* Debug */ = {
+		A19AB /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -237,7 +237,7 @@
 			};
 			name = Debug;
 		};
-		A1234567890ABCDEF9AC /* Release */ = {
+		A19AC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -293,7 +293,7 @@
 			};
 			name = Release;
 		};
-		A1234567890ABCDEF9AE /* Debug */ = {
+		A19AE /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -322,7 +322,7 @@
 			};
 			name = Debug;
 		};
-		A1234567890ABCDEF9AF /* Release */ = {
+		A19AF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -354,25 +354,25 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A1234567890ABCDEF995 /* Build configuration list for PBXProject "ACCNeoX" */ = {
+		A1995 /* Build configuration list for PBXProject "ACCNeoX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1234567890ABCDEF9AB /* Debug */,
-				A1234567890ABCDEF9AC /* Release */,
+				A19AB /* Debug */,
+				A19AC /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A1234567890ABCDEF9AD /* Build configuration list for PBXNativeTarget "ACCNeoX" */ = {
+		A19AD /* Build configuration list for PBXNativeTarget "ACCNeoX" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1234567890ABCDEF9AE /* Debug */,
-				A1234567890ABCDEF9AF /* Release */,
+				A19AE /* Debug */,
+				A19AF /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = A1234567890ABCDEF992 /* Project object */;
+	rootObject = A1992 /* Project object */;
 }
