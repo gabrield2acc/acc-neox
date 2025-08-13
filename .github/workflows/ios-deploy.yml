@@ -58,6 +58,7 @@ jobs:
         
     - name: Build iOS App
       run: |
+        mkdir -p build
         xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
@@ -67,6 +68,7 @@ jobs:
           PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
           CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
           DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+          CODE_SIGN_STYLE=Manual \
           archive
           
     - name: Export IPA
