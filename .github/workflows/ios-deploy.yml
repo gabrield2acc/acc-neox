@@ -53,6 +53,13 @@ jobs:
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
         
+    - name: Debug Provisioning Profile
+      run: |
+        echo "Checking provisioning profile details..."
+        security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision | plutil -p -
+        echo "Available provisioning profiles:"
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
+        
     - name: List available schemes
       run: xcodebuild -project ACCNeoX.xcodeproj -list
         
@@ -82,6 +89,13 @@ jobs:
             <string>app-store</string>
             <key>teamID</key>
             <string>${{ secrets.DEVELOPMENT_TEAM }}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>net.acloudradius.neox</key>
+                <string>${{ secrets.PROVISIONING_PROFILE_NAME }}</string>
+            </dict>
+            <key>signingStyle</key>
+            <string>manual</string>
             <key>uploadBitcode</key>
             <false/>
             <key>uploadSymbols</key>
