@@ -1,0 +1,39 @@
+name: ACCNeoX
+options:
+  bundleIdPrefix: com.acloudradius
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: 15.0
+  developmentLanguage: en
+
+settings:
+  MARKETING_VERSION: 1.0
+  CURRENT_PROJECT_VERSION: 1
+
+targets:
+  ACCNeoX:
+    type: application
+    platform: iOS
+    deploymentTarget: 15.0
+    sources:
+      - path: ACCNeoX
+        excludes:
+          - "*.md"
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.acloudradius.accneox
+      DEVELOPMENT_TEAM: ""
+      CODE_SIGN_STYLE: Automatic
+      INFOPLIST_FILE: ACCNeoX/Info.plist
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      SWIFT_VERSION: 5.0
+      TARGETED_DEVICE_FAMILY: "1,2"
+
+schemes:
+  ACCNeoX:
+    build:
+      targets:
+        ACCNeoX: all
+    run:
+      config: Debug
+    archive:
+      config: Release
