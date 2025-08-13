@@ -37,52 +37,23 @@ jobs:
         
     - name: Create App Icons
       run: |
-        # Create app icons using ImageMagick or sips
+        # Create simple app icons using macOS built-in tools
         mkdir -p ACCNeoX/Assets.xcassets/AppIcon.appiconset/
         
-        # Create a simple orange icon with "nX" text
-        cat > create_icon.py << 'EOF'
-        import os
-        from PIL import Image, ImageDraw, ImageFont
+        # Create a simple orange square using ImageMagick (available via brew)
+        brew install imagemagick
         
-        def create_icon(size, filename):
-            # Create image with orange background
-            img = Image.new('RGB', (size, size), color='#FF8C00')
-            draw = ImageDraw.Draw(img)
-            
-            # Try to use a system font, fallback to default
-            try:
-                font_size = max(size // 3, 12)
-                font = ImageFont.load_default()
-            except:
-                font = ImageFont.load_default()
-            
-            # Draw "nX" text in center
-            text = "nX"
-            bbox = draw.textbbox((0, 0), text, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_height = bbox[3] - bbox[1]
-            
-            x = (size - text_width) // 2
-            y = (size - text_height) // 2
-            
-            draw.text((x, y), text, fill='white', font=font)
-            
-            # Save icon
-            img.save(f'ACCNeoX/Assets.xcassets/AppIcon.appiconset/{filename}')
-            print(f'Created {filename} ({size}x{size})')
+        # Create base 1024x1024 orange icon
+        magick -size 1024x1024 xc:"#FF8C00" ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png
         
-        # Create required icon sizes
-        create_icon(120, 'icon-60@2x.png')      # 60pt @2x = 120px
-        create_icon(180, 'icon-60@3x.png')      # 60pt @3x = 180px  
-        create_icon(152, 'icon-76@2x.png')      # 76pt @2x = 152px
-        create_icon(167, 'icon-83.5@2x.png')    # 83.5pt @2x = 167px
-        create_icon(1024, 'icon-1024.png')      # 1024px for App Store
-        EOF
+        # Create all required sizes
+        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 120x120 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@2x.png
+        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 180x180 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@3x.png
+        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 152x152 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-76@2x.png
+        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 167x167 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-83.5@2x.png
         
-        # Install PIL and create icons
-        python3 -m pip install Pillow
-        python3 create_icon.py
+        echo "Created all required app icons:"
+        ls -la ACCNeoX/Assets.xcassets/AppIcon.appiconset/
       
     - name: Create Keychain
       run: |
@@ -184,5 +155,11 @@ jobs:
       if: always()
       
     - name: Clean up keychain
-      run: security delete-keychain build.keychain
+      run: |
+        if security list-keychains | grep -q "build.keychain"; then
+          security delete-keychain build.keychain
+          echo "Keychain deleted"
+        else
+          echo "Keychain not found - already cleaned up"
+        fi
       if: always()
