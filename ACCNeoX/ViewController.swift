@@ -127,20 +127,28 @@ class ViewController: UIViewController {
     }
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
+        print("DEBUG: Button tapped - starting profile installation")
+        statusLabel.text = "Button tapped! Preparing to open Safari..."
         openProfileInstallationPage()
     }
     
     private func openProfileInstallationPage() {
+        print("DEBUG: openProfileInstallationPage called")
         guard let url = URL(string: "https://profiles.acloudradius.net") else {
+            print("DEBUG: URL creation failed")
             showAlert(title: "Error", message: "Invalid URL")
             return
         }
         
+        print("DEBUG: URL created successfully: \(url)")
         statusLabel.text = "Opening profile installation page..."
         
         let safariVC = SFSafariViewController(url: url)
         safariVC.delegate = self
-        present(safariVC, animated: true)
+        print("DEBUG: About to present SFSafariViewController")
+        present(safariVC, animated: true) {
+            print("DEBUG: SFSafariViewController presented successfully")
+        }
     }
     
     private func checkNetworkAndUpdateAdvertisement() {
