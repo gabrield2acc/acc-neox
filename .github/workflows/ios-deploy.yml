@@ -1,0 +1,124 @@
+name: iOS Build and Deploy
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  XCODE_VERSION: '15.0'
+  
+jobs:
+  build-and-deploy:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select Xcode version
+      run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app/Contents/Developer
+      
+    - name: Show Xcode version
+      run: xcodebuild -version
+      
+    - name: Cache CocoaPods
+      uses: actions/cache@v3
+      with:
+        path: Pods
+        key: ${{ runner.os }}-pods-${{ hashFiles('**/Podfile.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pods-
+          
+    - name: Install CocoaPods dependencies
+      run: |
+        if [ -f "Podfile" ]; then
+          pod install --repo-update
+        fi
+      working-directory: .
+      
+    - name: Create Keychain
+      run: |
+        security create-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+        security set-keychain-settings -t 3600 -u build.keychain
+        
+    - name: Import Apple Distribution Certificate
+      run: |
+        echo "${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}" | base64 --decode > certificate.p12
+        security import certificate.p12 -k build.keychain -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${{ secrets.KEYCHAIN_PASSWORD }}" build.keychain
+        
+    - name: Import Provisioning Profile
+      run: |
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/profile.mobileprovision
+        
+    - name: Build iOS App
+      run: |
+        xcodebuild \
+          -project ACCNeoX.xcodeproj \
+          -scheme ACCNeoX \
+          -configuration Release \
+          -destination generic/platform=iOS \
+          -archivePath $PWD/build/ACCNeoX.xcarchive \
+          PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
+          CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
+          DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+          archive
+          
+    - name: Export IPA
+      run: |
+        cat > ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${{ secrets.DEVELOPMENT_TEAM }}</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+        </dict>
+        </plist>
+        EOF
+        
+        xcodebuild \
+          -exportArchive \
+          -archivePath $PWD/build/ACCNeoX.xcarchive \
+          -exportOptionsPlist ExportOptions.plist \
+          -exportPath $PWD/build
+          
+    - name: Upload to TestFlight
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        APPLE_TEAM_ID: ${{ secrets.DEVELOPMENT_TEAM }}
+      run: |
+        xcrun altool --upload-app \
+          --type ios \
+          --file build/ACCNeoX.ipa \
+          --username "$APPLE_ID" \
+          --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+          --asc-provider "$APPLE_TEAM_ID"
+          
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ios-build-artifacts
+        path: |
+          build/ACCNeoX.ipa
+          build/ACCNeoX.xcarchive
+      if: always()
+      
+    - name: Clean up keychain
+      run: security delete-keychain build.keychain
+      if: always()
