@@ -20,13 +20,13 @@ class ViewController: UIViewController, WKNavigationDelegate {
     }
     
     private func setupUI() {
-        profileButton.setTitle("Install WiFi Profile", for: .normal)
+        profileButton.setTitle("Access Free WiFi", for: .normal)
         profileButton.backgroundColor = .systemOrange
         profileButton.setTitleColor(.white, for: .normal)
         profileButton.layer.cornerRadius = 8
         profileButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
         
-        statusLabel.text = "Tap the button to install your WiFi profile"
+        statusLabel.text = "Tap the button to access free WiFi"
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
         statusLabel.textColor = .label
@@ -127,7 +127,7 @@ class ViewController: UIViewController, WKNavigationDelegate {
     }
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
-        print("DEBUG: Install WiFi Profile button tapped")
+        print("DEBUG: Access Free WiFi button tapped")
         
         // Update button and status immediately
         sender.backgroundColor = .systemGreen
