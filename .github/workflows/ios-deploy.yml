@@ -48,12 +48,31 @@ jobs:
         # Install iOS 18.0 simulator and platforms if available
         sudo xcodebuild -runFirstLaunch || echo "First launch already completed"
         
-        # Download and install iOS 18.0 simulator if not present
+        # Force download and install all iOS platforms
+        echo "Downloading iOS platforms..."
+        xcodebuild -downloadAllPlatforms || echo "Download all platforms failed, trying individual downloads"
+        
+        # Try specific iOS platform downloads
         xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
+        xcodebuild -downloadPlatform iOSSimulator || echo "iOS Simulator download failed or already installed"
+        
+        # Install components manually if available
+        echo "Installing iOS runtime components..."
+        xcrun simctl runtime add iOS || echo "Runtime add failed or already installed"
+        
+        # Force acceptance of platform licenses
+        sudo xcodebuild -license accept || echo "License already accepted"
+        
+        # Wait for installation to complete
+        sleep 10
         
         # List all available platforms to verify installation
         echo "Available platforms after installation:"
         xcodebuild -showsdks
+        
+        # List available destinations to check if iOS device destination is available
+        echo "Testing destination availability:"
+        xcodebuild -showdestinations -scheme ACCNeoX -project ACCNeoX.xcodeproj || echo "Destinations not yet available"
       
     - name: Verify Xcode project exists
       run: |
@@ -173,20 +192,38 @@ jobs:
         echo "Starting build with $LATEST_IOS_SDK..."
         BUILD_SUCCESS=false
         
+        # Check if destinations are available and try different build approaches
+        DESTINATIONS_AVAILABLE=false
+        if xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations | grep -q "platform:iOS.*id:dvtdevice-DVTiPhonePlaceholder.*name:Any iOS Device" | grep -v "error:"; then
+          DESTINATIONS_AVAILABLE=true
+          echo "✅ iOS device destinations are available"
+        else
+          echo "⚠️  No iOS device destinations available - using generic destination"
+        fi
+        
         # Try building with the selected SDK
-        if xcodebuild \
+        BUILD_CMD="xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
           -configuration Release \
-          -sdk "$LATEST_IOS_SDK" \
+          -sdk \"$LATEST_IOS_SDK\" \
           -archivePath $PWD/build/ACCNeoX.xcarchive \
-          PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
-          CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
-          DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+          PROVISIONING_PROFILE_SPECIFIER=\"${{ secrets.PROVISIONING_PROFILE_NAME }}\" \
+          CODE_SIGN_IDENTITY=\"${{ secrets.CODE_SIGN_IDENTITY }}\" \
+          DEVELOPMENT_TEAM=\"${{ secrets.DEVELOPMENT_TEAM }}\" \
           CODE_SIGN_STYLE=Manual \
           ONLY_ACTIVE_ARCH=NO \
-          IPHONEOS_DEPLOYMENT_TARGET=14.0 \
-          archive; then
+          IPHONEOS_DEPLOYMENT_TARGET=14.0"
+        
+        # Add destination if available
+        if [ "$DESTINATIONS_AVAILABLE" = true ]; then
+          BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
+        else
+          BUILD_CMD="$BUILD_CMD archive"
+        fi
+        
+        echo "Executing build command: $BUILD_CMD"
+        if eval $BUILD_CMD; then
           BUILD_SUCCESS=true
           echo "✅ Build succeeded with $LATEST_IOS_SDK"
         else
@@ -201,19 +238,28 @@ jobs:
             if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
               echo "🔄 Trying fallback SDK: $SDK"
               
-              if xcodebuild \
+              # Build fallback command
+              FALLBACK_BUILD_CMD="xcodebuild \
                 -project ACCNeoX.xcodeproj \
                 -scheme ACCNeoX \
                 -configuration Release \
-                -sdk "$SDK" \
+                -sdk \"$SDK\" \
                 -archivePath $PWD/build/ACCNeoX.xcarchive \
-                PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
-                CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
-                DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+                PROVISIONING_PROFILE_SPECIFIER=\"${{ secrets.PROVISIONING_PROFILE_NAME }}\" \
+                CODE_SIGN_IDENTITY=\"${{ secrets.CODE_SIGN_IDENTITY }}\" \
+                DEVELOPMENT_TEAM=\"${{ secrets.DEVELOPMENT_TEAM }}\" \
                 CODE_SIGN_STYLE=Manual \
                 ONLY_ACTIVE_ARCH=NO \
-                IPHONEOS_DEPLOYMENT_TARGET=14.0 \
-                archive; then
+                IPHONEOS_DEPLOYMENT_TARGET=14.0"
+              
+              # Add destination if available
+              if [ "$DESTINATIONS_AVAILABLE" = true ]; then
+                FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
+              else
+                FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD archive"
+              fi
+              
+              if eval $FALLBACK_BUILD_CMD; then
                 
                 BUILD_SUCCESS=true
                 echo "✅ Build succeeded with fallback SDK $SDK"
