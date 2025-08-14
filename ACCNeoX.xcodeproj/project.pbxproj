@@ -10,6 +10,7 @@
 		1A2B3C4D5E6F789012345678 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345677 /* AppDelegate.swift */; };
 		1A2B3C4D5E6F789012345679 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345676 /* SceneDelegate.swift */; };
 		1A2B3C4D5E6F78901234567A /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345675 /* ViewController.swift */; };
+		1A2B3C4D5E6F78901234567E /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F78901234567F /* NetworkMonitor.swift */; };
 		1A2B3C4D5E6F78901234567B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345674 /* Main.storyboard */; };
 		1A2B3C4D5E6F78901234567C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345673 /* Assets.xcassets */; };
 		1A2B3C4D5E6F78901234567D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F789012345672 /* LaunchScreen.storyboard */; };
@@ -20,6 +21,7 @@
 		1A2B3C4D5E6F789012345677 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F789012345676 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F789012345675 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F78901234567F /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 		1A2B3C4D5E6F789012345674 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		1A2B3C4D5E6F789012345673 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1A2B3C4D5E6F789012345672 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -59,6 +61,7 @@
 				1A2B3C4D5E6F789012345677 /* AppDelegate.swift */,
 				1A2B3C4D5E6F789012345676 /* SceneDelegate.swift */,
 				1A2B3C4D5E6F789012345675 /* ViewController.swift */,
+				1A2B3C4D5E6F78901234567F /* NetworkMonitor.swift */,
 				1A2B3C4D5E6F789012345674 /* Main.storyboard */,
 				1A2B3C4D5E6F789012345673 /* Assets.xcassets */,
 				1A2B3C4D5E6F789012345672 /* LaunchScreen.storyboard */,
@@ -139,6 +142,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1A2B3C4D5E6F78901234567A /* ViewController.swift in Sources */,
+				1A2B3C4D5E6F78901234567E /* NetworkMonitor.swift in Sources */,
 				1A2B3C4D5E6F789012345678 /* AppDelegate.swift in Sources */,
 				1A2B3C4D5E6F789012345679 /* SceneDelegate.swift in Sources */,
 			);
@@ -272,7 +276,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ACCNeoX/Info.plist;
@@ -286,7 +290,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.acloudradius.neox;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "$(PROVISIONING_PROFILE_NAME)";
@@ -303,7 +307,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "$(CODE_SIGN_IDENTITY)";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ACCNeoX/Info.plist;
@@ -317,7 +321,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.acloudradius.neox;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "$(PROVISIONING_PROFILE_NAME)";

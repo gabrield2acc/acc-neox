@@ -1,6 +1,7 @@
 import UIKit
 import SafariServices
 import SystemConfiguration.CaptiveNetwork
+import CoreLocation
 
 class ViewController: UIViewController {
     
@@ -8,12 +9,21 @@ class ViewController: UIViewController {
     @IBOutlet weak var advertisementImageView: UIImageView!
     @IBOutlet weak var statusLabel: UILabel!
     
+    private let networkMonitor = NetworkMonitor.shared
+    private var currentNetworkInfo: NetworkInfo?
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         print("🔵 ViewController viewDidLoad called")
         setupUI()
-        checkNetworkAndUpdateImage()
+        setupNetworkMonitoring()
         print("🔵 ViewController setup completed")
+    }
+    
+    private func setupNetworkMonitoring() {
+        print("🔍 Setting up advanced network monitoring...")
+        networkMonitor.delegate = self
+        networkMonitor.startMonitoring()
     }
     
     private func setupUI() {
@@ -66,21 +76,10 @@ class ViewController: UIViewController {
         advertisementImageView.layer.cornerRadius = 12
         advertisementImageView.clipsToBounds = true
         
-        // Load default image
+        // Load default image initially
         loadDefaultImage()
         
         print("🔵 UI setup completed successfully")
-        
-        // Test button functionality after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            print("🔵 Testing if button method can be called programmatically...")
-            self.statusLabel.text = "🔧 Testing button connection... (this message will disappear)"
-            
-            // Reset status after 3 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
-                self.statusLabel.text = "Tap the button to access free WiFi"
-            }
-        }
     }
     
     @IBAction @objc func installProfileButtonTapped(_ sender: UIButton) {
@@ -154,6 +153,37 @@ class ViewController: UIViewController {
     
     private func loadDefaultImage() {
         createNeoXImage()
+    }
+    
+    private func updateUIForNetworkStatus(isACLCloudRadiusConnected: Bool, networkInfo: NetworkInfo?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            self.currentNetworkInfo = networkInfo
+            
+            if isACLCloudRadiusConnected {
+                print("✅ Switching to SONY branding - connected to acloudradius.net realm")
+                self.createSONYImage()
+                
+                if let info = networkInfo {
+                    self.statusLabel.text = "🎉 Connected to \(info.ssid)! Enjoy your premium WiFi experience."
+                } else {
+                    self.statusLabel.text = "🎉 Connected to Passpoint network! Enjoying premium experience."
+                }
+            } else if let info = networkInfo, info.isPasspoint {
+                print("🔍 Connected to Passpoint network but not acloudradius.net realm")
+                self.createNeoXImage()
+                self.statusLabel.text = "Connected to \(info.ssid). Tap button for premium access."
+            } else if let info = networkInfo {
+                print("🔍 Connected to regular WiFi network: \(info.ssid)")
+                self.createNeoXImage()
+                self.statusLabel.text = "Connected to \(info.ssid). Tap button for free WiFi access."
+            } else {
+                print("🔍 No WiFi connection detected")
+                self.createNeoXImage()
+                self.statusLabel.text = "Tap the button to access free WiFi"
+            }
+        }
     }
     
     private func createNeoXImage() {
@@ -234,54 +264,34 @@ class ViewController: UIViewController {
         advertisementImageView.image = image
     }
     
-    private func checkNetworkAndUpdateImage() {
-        if isConnectedToPasspointNetwork() {
-            createSONYImage()
-            statusLabel.text = "Connected to Passpoint network - Enjoy your free WiFi!"
-        } else {
-            loadDefaultImage()
-        }
-    }
-    
-    private func isConnectedToPasspointNetwork() -> Bool {
-        // Check if connected to a network with acloudradius.net realm
-        guard let interfaces = CNCopySupportedInterfaces() as NSArray? else { return false }
-        
-        for interface in interfaces {
-            if let interfaceInfo = CNCopyCurrentNetworkInfo(interface as! CFString) as NSDictionary? {
-                if let ssid = interfaceInfo[kCNNetworkInfoKeySSID as String] as? String {
-                    print("Connected to SSID: \(ssid)")
-                    
-                    // Simple heuristic: if SSID contains certain keywords or patterns
-                    // In real implementation, you'd check NAI realm for acloudradius.net
-                    if ssid.lowercased().contains("passpoint") || 
-                       ssid.lowercased().contains("hotspot") ||
-                       ssid.lowercased().contains("guest") ||
-                       ssid.lowercased().contains("acloudradius") {
-                        return true
-                    }
-                }
-            }
-        }
-        return false
+    deinit {
+        networkMonitor.stopMonitoring()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        // Check network status when returning to app (after profile installation)
-        checkNetworkAndUpdateImage()
+        // Network status will be updated automatically via NetworkMonitor delegate
+        print("🔵 ViewController appearing - network monitoring is active")
+    }
+}
+
+// MARK: - NetworkMonitorDelegate
+extension ViewController: NetworkMonitorDelegate {
+    func networkStatusChanged(isPasspointConnected: Bool, networkInfo: NetworkInfo?) {
+        print("🔍 Network status changed - Passpoint: \(isPasspointConnected), Info: \(networkInfo?.ssid ?? "None")")
+        
+        let isACLCloudRadiusConnected = networkInfo?.isACLCloudRadiusRealm == true
+        updateUIForNetworkStatus(isACLCloudRadiusConnected: isACLCloudRadiusConnected, networkInfo: networkInfo)
     }
 }
 
 // MARK: - SFSafariViewControllerDelegate
 extension ViewController: SFSafariViewControllerDelegate {
     func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
-        statusLabel.text = "Safari closed. If you installed a profile, you may see the SONY branding when connected."
+        statusLabel.text = "Safari closed. If you installed a profile, network detection will update automatically."
         
-        // Check network status after Safari closes
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            self.checkNetworkAndUpdateImage()
-        }
+        // Network monitoring will automatically detect changes - no manual check needed
+        print("🔵 Safari closed - automatic network monitoring will detect profile installation")
     }
 }
