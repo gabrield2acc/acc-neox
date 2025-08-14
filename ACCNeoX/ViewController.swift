@@ -10,8 +10,10 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        print("🔵 ViewController viewDidLoad called")
         setupUI()
         checkNetworkAndUpdateImage()
+        print("🔵 ViewController setup completed")
     }
     
     private func setupUI() {
@@ -38,52 +40,71 @@ class ViewController: UIViewController {
     }
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
-        print("Button tapped!")
+        print("🔵 Button tapped - installProfileButtonTapped called")
         
-        // Visual feedback
-        sender.backgroundColor = .systemGreen
-        statusLabel.text = "Opening profile page..."
+        // Immediate visual feedback to confirm button is working
+        sender.backgroundColor = .systemRed
+        statusLabel.text = "Button pressed! Processing..."
+        
+        // Force UI update
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
         
         let urlString = "https://profiles.acloudradius.net/"
+        print("🔵 Creating URL from string: \(urlString)")
         
         guard let url = URL(string: urlString) else {
-            statusLabel.text = "Invalid URL"
+            print("❌ Failed to create URL from string: \(urlString)")
+            statusLabel.text = "❌ Invalid URL"
             sender.backgroundColor = .systemOrange
             return
         }
         
-        print("Opening URL: \(url)")
+        print("✅ URL created successfully: \(url)")
+        print("🔵 Checking if app can open URL...")
         
-        // Try to open in default browser first (external app)
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url, options: [:]) { [weak self] success in
-                DispatchQueue.main.async {
-                    if success {
-                        self?.statusLabel.text = "Profile page opened in browser - follow the instructions to install."
-                    } else {
-                        // Fallback to SFSafariViewController
-                        self?.openWithSafariViewController(url: url)
-                    }
+        // Check if we can open the URL
+        let canOpen = UIApplication.shared.canOpenURL(url)
+        print("🔵 Can open URL: \(canOpen)")
+        
+        statusLabel.text = "Opening browser..."
+        sender.backgroundColor = .systemGreen
+        
+        // Always try to open in external browser first
+        print("🔵 Attempting to open URL in external browser...")
+        UIApplication.shared.open(url, options: [:]) { [weak self] success in
+            print("🔵 External browser open result: \(success)")
+            
+            DispatchQueue.main.async {
+                if success {
+                    print("✅ Successfully opened in external browser")
+                    self?.statusLabel.text = "✅ Opened in Safari! Follow instructions to install profile."
+                } else {
+                    print("❌ Failed to open in external browser, trying Safari View Controller...")
+                    self?.statusLabel.text = "Opening in app browser..."
+                    self?.openWithSafariViewController(url: url)
                 }
             }
-        } else {
-            // Fallback to SFSafariViewController
-            openWithSafariViewController(url: url)
         }
         
-        // Reset button color after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+        // Reset button color after 3 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+            print("🔵 Resetting button color to orange")
             sender.backgroundColor = .systemOrange
         }
     }
     
     private func openWithSafariViewController(url: URL) {
+        print("🔵 Creating Safari View Controller for URL: \(url)")
+        
         let safariVC = SFSafariViewController(url: url)
         safariVC.dismissButtonStyle = .close
         safariVC.delegate = self
         
+        print("🔵 Presenting Safari View Controller...")
         present(safariVC, animated: true) {
-            self.statusLabel.text = "Profile page opened in Safari - follow the instructions to install."
+            print("✅ Safari View Controller presented successfully")
+            self.statusLabel.text = "📱 Opened in app browser - follow instructions to install profile."
         }
     }
     
