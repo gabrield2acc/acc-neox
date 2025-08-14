@@ -88,7 +88,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1340;
 				TargetAttributes = {
 					11DBD93B1C5A4513841C7E2C = {
 						DevelopmentTeam = "$(DEVELOPMENT_TEAM)";
@@ -97,7 +97,7 @@
 				};
 			};
 			buildConfigurationList = F534AC149FF71F2E76D7ECB4 /* Build configuration list for PBXProject "ACCNeoX" */;
-			compatibilityVersion = "Xcode 14.0";
+			compatibilityVersion = "Xcode 13.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (

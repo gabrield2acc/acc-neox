@@ -42,7 +42,7 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
       
-    - name: Install iOS platforms and simulators
+    - name: Install iOS platforms and fix storyboard compatibility
       run: |
         echo "Installing iOS platforms for Xcode 16..."
         # Install iOS 18.0 simulator and platforms if available
@@ -56,6 +56,11 @@ jobs:
         xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
         xcodebuild -downloadPlatform iOSSimulator || echo "iOS Simulator download failed or already installed"
         
+        # Install iOS 17.x platforms as well for storyboard compatibility
+        echo "Installing iOS 17.x platforms for storyboard compatibility..."
+        xcodebuild -downloadPlatform iOS -version 17.5 || echo "iOS 17.5 download failed or not available"
+        xcodebuild -downloadPlatform iOS -version 17.4 || echo "iOS 17.4 download failed or not available"
+        
         # Install components manually if available
         echo "Installing iOS runtime components..."
         xcrun simctl runtime add iOS || echo "Runtime add failed or already installed"
@@ -63,8 +68,24 @@ jobs:
         # Force acceptance of platform licenses
         sudo xcodebuild -license accept || echo "License already accepted"
         
+        # Additional storyboard compatibility fixes
+        echo "Fixing storyboard compilation compatibility..."
+        
+        # Install additional Xcode components that might be needed
+        sudo xcodebuild -downloadPlatform tvOS || echo "tvOS download failed"
+        sudo xcodebuild -downloadPlatform watchOS || echo "watchOS download failed"
+        
+        # Ensure Interface Builder components are available
+        echo "Installing Interface Builder components..."
+        sudo xcodebuild -installComponents || echo "Component installation failed or already installed"
+        
+        # Force rebuild of Xcode caches that might affect storyboard compilation
+        echo "Rebuilding Xcode caches..."
+        rm -rf ~/Library/Caches/com.apple.dt.Xcode || echo "Cache cleanup failed"
+        rm -rf ~/Library/Developer/Xcode/DerivedData || echo "DerivedData cleanup failed"
+        
         # Wait for installation to complete
-        sleep 10
+        sleep 15
         
         # List all available platforms to verify installation
         echo "Available platforms after installation:"
@@ -100,16 +121,67 @@ jobs:
         mkdir -p ACCNeoX/Assets.xcassets/AppIcon.appiconset/
         
         # Create a simple orange square using ImageMagick (available via brew)
-        brew install imagemagick
+        echo "Installing ImageMagick for icon generation..."
+        brew install imagemagick || echo "ImageMagick install failed, trying alternative"
         
-        # Create base 1024x1024 orange icon
-        magick -size 1024x1024 xc:"#FF8C00" ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+        # Verify ImageMagick installation
+        if command -v magick >/dev/null 2>&1; then
+          echo "ImageMagick available, creating icons..."
+          # Create base 1024x1024 orange icon
+          magick -size 1024x1024 xc:"#FF8C00" ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+          
+          # Create all required sizes
+          magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 120x120 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@2x.png
+          magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 180x180 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@3x.png
+          magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 152x152 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-76@2x.png
+          magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 167x167 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-83.5@2x.png
+        else
+          echo "ImageMagick not available, using sips (macOS built-in) for icon generation..."
+          # Create base icon using built-in macOS tools
+          # Create a simple orange PNG using Python (available on macOS)
+          python3 -c "
+import struct
+import zlib
+
+def create_png(width, height, color):
+    def write_png(buf, width, height):
+        width_bytes = width * 4
+        raw_data = b''.join(
+            b'\x00' + struct.pack('>' + str(width) + 'I', *buf[y * width:(y + 1) * width])
+            for y in range(height)
+        )
+        def write_chunk(f, chunk_type, data):
+            f.write(struct.pack('>I', len(data)))
+            f.write(chunk_type)
+            f.write(data)
+            f.write(struct.pack('>I', zlib.crc32(chunk_type + data) & 0xffffffff))
         
-        # Create all required sizes
-        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 120x120 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@2x.png
-        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 180x180 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@3x.png
-        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 152x152 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-76@2x.png
-        magick ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png -resize 167x167 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-83.5@2x.png
+        with open('ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png', 'wb') as f:
+            f.write(struct.pack('8B', 137, 80, 78, 71, 13, 10, 26, 10))
+            write_chunk(f, b'IHDR', struct.pack('>2I5B', width, height, 8, 6, 0, 0, 0))
+            compressor = zlib.compressobj()
+            png_data = compressor.compress(raw_data)
+            png_data += compressor.flush()
+            write_chunk(f, b'IDAT', png_data)
+            write_chunk(f, b'IEND', b'')
+    
+    # Create 1024x1024 orange image
+    orange = 0xFF8C00FF  # Orange with alpha
+    buf = [orange] * (width * height)
+    write_png(buf, width, height)
+
+create_png(1024, 1024, 0xFF8C00FF)
+print('Created base icon with Python')
+" || echo "Python icon generation failed"
+          
+          # Use sips to create different sizes if base icon exists
+          if [ -f "ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png" ]; then
+            sips -z 120 120 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png --out ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@2x.png
+            sips -z 180 180 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png --out ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-60@3x.png
+            sips -z 152 152 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png --out ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-76@2x.png
+            sips -z 167 167 ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-1024.png --out ACCNeoX/Assets.xcassets/AppIcon.appiconset/icon-83.5@2x.png
+          fi
+        fi
         
         echo "Created all required app icons:"
         ls -la ACCNeoX/Assets.xcassets/AppIcon.appiconset/
@@ -152,9 +224,23 @@ jobs:
         echo "Available SDKs:"
         xcodebuild -showsdks
         
-    - name: Build iOS App
+    - name: Build iOS App with Storyboard Compatibility
       run: |
         mkdir -p build
+        
+        echo "🔧 Pre-build storyboard compatibility fixes..."
+        
+        # Clear any storyboard compilation caches that might be causing issues
+        rm -rf ~/Library/Caches/com.apple.InterfaceBuilder3 || echo "IB cache cleanup failed"
+        rm -rf ~/Library/Developer/Xcode/DerivedData/ACCNeoX* || echo "Project cache cleanup failed"
+        
+        # Verify storyboard files have compatible toolsVersion
+        echo "Checking storyboard compatibility..."
+        MAIN_STORYBOARD_TOOLS_VERSION=$(grep -o 'toolsVersion="[^"]*"' ACCNeoX/Base.lproj/Main.storyboard | cut -d'"' -f2)
+        LAUNCH_STORYBOARD_TOOLS_VERSION=$(grep -o 'toolsVersion="[^"]*"' ACCNeoX/Base.lproj/LaunchScreen.storyboard | cut -d'"' -f2)
+        
+        echo "Main.storyboard toolsVersion: $MAIN_STORYBOARD_TOOLS_VERSION"
+        echo "LaunchScreen.storyboard toolsVersion: $LAUNCH_STORYBOARD_TOOLS_VERSION"
         
         # Find an iOS SDK that's actually installed (avoid iOS 18.0 if not installed)
         AVAILABLE_SDKS=$(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}')
@@ -201,7 +287,7 @@ jobs:
           echo "⚠️  No iOS device destinations available - using generic destination"
         fi
         
-        # Try building with the selected SDK
+        # Enhanced build command with storyboard compatibility settings
         BUILD_CMD="xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
@@ -213,7 +299,9 @@ jobs:
           DEVELOPMENT_TEAM=\"${{ secrets.DEVELOPMENT_TEAM }}\" \
           CODE_SIGN_STYLE=Manual \
           ONLY_ACTIVE_ARCH=NO \
-          IPHONEOS_DEPLOYMENT_TARGET=14.0"
+          IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+          SKIP_INSTALL=NO \
+          BUILD_LIBRARY_FOR_DISTRIBUTION=NO"
         
         # Always add destination parameter for iOS device builds
         BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
@@ -224,6 +312,7 @@ jobs:
           echo "✅ Build succeeded with $LATEST_IOS_SDK"
         else
           echo "❌ Build failed with $LATEST_IOS_SDK"
+          echo "📋 Checking for storyboard compilation errors in build log..."
           
           # Try with alternative SDKs in order of preference
           ALL_IOS_SDKS=($(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}'))
@@ -234,7 +323,7 @@ jobs:
             if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
               echo "🔄 Trying fallback SDK: $SDK"
               
-              # Build fallback command
+              # Build fallback command with enhanced storyboard settings
               FALLBACK_BUILD_CMD="xcodebuild \
                 -project ACCNeoX.xcodeproj \
                 -scheme ACCNeoX \
@@ -246,13 +335,14 @@ jobs:
                 DEVELOPMENT_TEAM=\"${{ secrets.DEVELOPMENT_TEAM }}\" \
                 CODE_SIGN_STYLE=Manual \
                 ONLY_ACTIVE_ARCH=NO \
-                IPHONEOS_DEPLOYMENT_TARGET=14.0"
+                IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+                SKIP_INSTALL=NO \
+                BUILD_LIBRARY_FOR_DISTRIBUTION=NO"
               
               # Always add destination parameter for iOS device builds  
               FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
               
               if eval $FALLBACK_BUILD_CMD; then
-                
                 BUILD_SUCCESS=true
                 echo "✅ Build succeeded with fallback SDK $SDK"
                 break
@@ -264,6 +354,15 @@ jobs:
           
           if [ "$BUILD_SUCCESS" = false ]; then
             echo "💥 Build failed with all available iOS SDKs: ${ALL_IOS_SDKS[@]}"
+            echo "🔍 This might be due to storyboard compilation issues. Checking available Interface Builder tools..."
+            
+            # Debug Interface Builder availability
+            which ibtool || echo "ibtool not found - storyboard compilation will fail"
+            
+            # List all Xcode tools
+            echo "Available Xcode tools:"
+            ls -la $(xcode-select -p)/usr/bin/ | grep -E "(ibtool|actool|copypng)" || echo "Critical Xcode tools missing"
+            
             exit 1
           fi
         fi
