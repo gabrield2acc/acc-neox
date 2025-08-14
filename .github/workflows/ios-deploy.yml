@@ -44,7 +44,8 @@ jobs:
       
     - name: Install XcodeGen
       run: |
-        brew install xcodegen
+        # Install a specific version of XcodeGen that generates compatible projects
+        brew install xcodegen@2.37.0 || brew install xcodegen
         
     - name: Clean and Generate Xcode project
       run: |
@@ -67,7 +68,7 @@ jobs:
         
         # Generate new project with current settings and force deployment target
         echo "Generating Xcode project with iOS $IOS_VERSION compatibility..."
-        xcodegen generate --spec project.yml
+        xcodegen generate --spec project.yml --use-cache
         
         # Verify project was created
         echo "Generated project contents:"
