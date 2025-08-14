@@ -132,10 +132,10 @@ class ViewController: UIViewController {
         print("DEBUG: Current thread: \(Thread.current)")
         print("DEBUG: Is main thread: \(Thread.isMainThread)")
         
-        statusLabel.text = "Button pressed! Attempting to open Safari..."
+        statusLabel.text = "Checking available browsers..."
         
-        // Try multiple approaches to open URL
-        openURLWithMultipleMethods()
+        // Show browser options and debug info
+        showBrowserOptions(sender: sender)
     }
     
     private func openProfileInstallationPage() {
@@ -209,101 +209,167 @@ class ViewController: UIViewController {
         }
     }
     
-    private func openURLWithMultipleMethods() {
-        print("DEBUG: openURLWithMultipleMethods called")
+    private func showBrowserOptions(sender: UIButton) {
+        print("DEBUG: showBrowserOptions called")
         
         let urlString = "https://profiles.acloudradius.net"
-        guard let url = URL(string: urlString) else {
-            print("DEBUG: FAILED to create URL from string: \(urlString)")
+        guard let targetURL = URL(string: urlString) else {
             statusLabel.text = "ERROR: Invalid URL"
             return
         }
         
-        print("DEBUG: URL created successfully: \(url)")
-        print("DEBUG: URL scheme: \(url.scheme ?? "nil")")
-        print("DEBUG: URL host: \(url.host ?? "nil")")
+        // Check all available browsers
+        let browsers = detectAvailableBrowsers()
+        print("DEBUG: Found \(browsers.count) available browsers")
         
-        // Method 1: Check if Safari is available
-        let safariURL = URL(string: "safari://")!
-        let canOpenSafari = UIApplication.shared.canOpenURL(safariURL)
-        print("DEBUG: Can open Safari app: \(canOpenSafari)")
+        // Create action sheet with all browser options
+        let alert = UIAlertController(title: "Open Profile Installation", message: "Available browsers and debug info:\n\nTarget URL: \(urlString)", preferredStyle: .actionSheet)
         
-        // Method 2: Check if we can open HTTPS URLs
-        let canOpenHTTPS = UIApplication.shared.canOpenURL(url)
-        print("DEBUG: Can open HTTPS URL: \(canOpenHTTPS)")
-        
-        statusLabel.text = "Checking URL opening capabilities..."
-        
-        // Try approach 1: Direct URL open
-        print("DEBUG: === ATTEMPTING METHOD 1: Direct URL open ===")
-        UIApplication.shared.open(url, options: [:]) { success in
-            print("DEBUG: Method 1 result: \(success)")
-            DispatchQueue.main.async {
-                if success {
-                    self.statusLabel.text = "SUCCESS: Safari opened!"
-                    print("DEBUG: SUCCESS - Safari opened with direct method")
-                } else {
-                    print("DEBUG: Method 1 FAILED, trying method 2")
-                    self.tryMethod2(url: url)
-                }
+        // Add browser options
+        for browser in browsers {
+            let action = UIAlertAction(title: "\(browser.name) ✓", style: .default) { _ in
+                self.openInBrowser(browser: browser, url: targetURL)
             }
+            alert.addAction(action)
         }
+        
+        // Add debug info option
+        alert.addAction(UIAlertAction(title: "Show Debug Info", style: .default) { _ in
+            self.showDebugInfo()
+        })
+        
+        // Add system default option
+        alert.addAction(UIAlertAction(title: "Try System Default", style: .default) { _ in
+            self.openWithSystemDefault(url: targetURL)
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        
+        // iPad support
+        if let popover = alert.popoverPresentationController {
+            popover.sourceView = sender
+            popover.sourceRect = sender.bounds
+        }
+        
+        present(alert, animated: true)
     }
     
-    private func tryMethod2(url: URL) {
-        print("DEBUG: === ATTEMPTING METHOD 2: With options ===")
-        statusLabel.text = "Trying alternate method..."
-        
-        let options: [UIApplication.OpenExternalURLOptionsKey: Any] = [
-            .universalLinksOnly: false
+    private func detectAvailableBrowsers() -> [Browser] {
+        let browsers = [
+            Browser(name: "Safari", scheme: "https://", packageName: "com.apple.mobilesafari"),
+            Browser(name: "Chrome", scheme: "googlechromes://", packageName: "com.google.chrome.ios"),
+            Browser(name: "Firefox", scheme: "firefox://open-url?url=https://", packageName: "org.mozilla.ios.Firefox"),
+            Browser(name: "Edge", scheme: "microsoft-edge-https://", packageName: "com.microsoft.msedge"),
+            Browser(name: "Opera", scheme: "opera-https://", packageName: "com.operasoftware.OperaTouch"),
+            Browser(name: "Brave", scheme: "brave-https://", packageName: "com.brave.ios.browser")
         ]
         
-        UIApplication.shared.open(url, options: options) { success in
-            print("DEBUG: Method 2 result: \(success)")
+        return browsers.filter { browser in
+            let testURL = URL(string: browser.scheme)!
+            let canOpen = UIApplication.shared.canOpenURL(testURL)
+            print("DEBUG: Browser \(browser.name) - Can open: \(canOpen)")
+            return canOpen
+        }
+    }
+    
+    private func openInBrowser(browser: Browser, url: URL) {
+        print("DEBUG: Opening in \(browser.name)")
+        statusLabel.text = "Opening in \(browser.name)..."
+        
+        var browserURL: URL
+        
+        if browser.name == "Safari" {
+            browserURL = url
+        } else if browser.name == "Chrome" {
+            browserURL = URL(string: "googlechromes://\(url.absoluteString)")!
+        } else if browser.name == "Firefox" {
+            browserURL = URL(string: "firefox://open-url?url=\(url.absoluteString)")!
+        } else if browser.name == "Edge" {
+            browserURL = URL(string: "microsoft-edge-https://\(url.host!)\(url.path)")!
+        } else if browser.name == "Opera" {
+            browserURL = URL(string: "opera-https://\(url.host!)\(url.path)")!
+        } else if browser.name == "Brave" {
+            browserURL = URL(string: "brave-https://\(url.host!)\(url.path)")!
+        } else {
+            browserURL = url
+        }
+        
+        print("DEBUG: Browser URL: \(browserURL)")
+        
+        UIApplication.shared.open(browserURL, options: [:]) { success in
             DispatchQueue.main.async {
                 if success {
-                    self.statusLabel.text = "SUCCESS: Safari opened (method 2)!"
-                    print("DEBUG: SUCCESS - Safari opened with method 2")
+                    self.statusLabel.text = "SUCCESS: \(browser.name) opened!"
+                    print("DEBUG: SUCCESS - \(browser.name) opened")
                 } else {
-                    print("DEBUG: Method 2 FAILED, trying method 3")
-                    self.tryMethod3()
+                    self.statusLabel.text = "FAILED: \(browser.name) didn't open"
+                    print("DEBUG: FAILED - \(browser.name) didn't open")
                 }
             }
         }
     }
     
-    private func tryMethod3() {
-        print("DEBUG: === ATTEMPTING METHOD 3: Settings app (fallback) ===")
-        statusLabel.text = "Opening Settings app as test..."
+    private func openWithSystemDefault(url: URL) {
+        print("DEBUG: Opening with system default")
+        statusLabel.text = "Trying system default..."
         
-        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
-            print("DEBUG: FAILED to create Settings URL")
-            statusLabel.text = "ERROR: Cannot create Settings URL"
-            return
-        }
-        
-        UIApplication.shared.open(settingsURL, options: [:]) { success in
-            print("DEBUG: Method 3 (Settings) result: \(success)")
+        UIApplication.shared.open(url, options: [:]) { success in
             DispatchQueue.main.async {
                 if success {
-                    self.statusLabel.text = "Settings opened - URL opening works! Safari may be restricted."
-                    self.showSafariError()
+                    self.statusLabel.text = "SUCCESS: System default opened!"
                 } else {
-                    self.statusLabel.text = "ERROR: Cannot open any URLs on this device"
-                    print("DEBUG: CRITICAL - Cannot open any URLs at all")
+                    self.statusLabel.text = "FAILED: System default didn't work"
                 }
             }
         }
     }
     
-    private func showSafariError() {
-        let alert = UIAlertController(
-            title: "Safari Issue", 
-            message: "URL opening works, but Safari won't open. This could be due to:\n\n1. Safari is disabled in Screen Time\n2. Safari is restricted by device management\n3. App sandbox restrictions\n\nPlease check Safari settings.", 
-            preferredStyle: .alert
-        )
+    private func showDebugInfo() {
+        let urlString = "https://profiles.acloudradius.net"
+        guard let url = URL(string: urlString) else { return }
+        
+        var debugText = "=== DEBUG INFO ===\n\n"
+        debugText += "Target URL: \(urlString)\n"
+        debugText += "URL valid: \(url.absoluteString)\n"
+        debugText += "Main thread: \(Thread.isMainThread)\n"
+        debugText += "iOS version: \(UIDevice.current.systemVersion)\n\n"
+        
+        debugText += "Browser Capabilities:\n"
+        let testBrowsers = [
+            ("Safari", "https://"),
+            ("Chrome", "googlechromes://"),
+            ("Firefox", "firefox://"),
+            ("Edge", "microsoft-edge-https://"),
+            ("System HTTPS", "https://")
+        ]
+        
+        for (name, scheme) in testBrowsers {
+            if let testURL = URL(string: scheme) {
+                let canOpen = UIApplication.shared.canOpenURL(testURL)
+                debugText += "• \(name): \(canOpen ? "✓" : "✗")\n"
+            }
+        }
+        
+        debugText += "\n📱 To see detailed logs:\n"
+        debugText += "1. Connect device to Mac\n"
+        debugText += "2. Open Console app\n"
+        debugText += "3. Select your device\n"
+        debugText += "4. Filter by 'ACCNeoX'\n"
+        debugText += "5. Press button again\n"
+        
+        let alert = UIAlertController(title: "Debug Information", message: debugText, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Copy Debug Info", style: .default) { _ in
+            UIPasteboard.general.string = debugText
+            self.statusLabel.text = "Debug info copied to clipboard"
+        })
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    struct Browser {
+        let name: String
+        let scheme: String
+        let packageName: String
     }
     
     private func checkNetworkAndUpdateAdvertisement() {
