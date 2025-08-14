@@ -132,10 +132,9 @@ class ViewController: UIViewController {
         print("DEBUG: Current thread: \(Thread.current)")
         print("DEBUG: Is main thread: \(Thread.isMainThread)")
         
-        statusLabel.text = "Checking available browsers..."
-        
-        // Show browser options and debug info
-        showBrowserOptions(sender: sender)
+        // Directly try to open URL and show the result
+        statusLabel.text = "Testing URL opening..."
+        testAllURLOpeningMethods()
     }
     
     private func openProfileInstallationPage() {
@@ -209,167 +208,172 @@ class ViewController: UIViewController {
         }
     }
     
-    private func showBrowserOptions(sender: UIButton) {
-        print("DEBUG: showBrowserOptions called")
+    private func testAllURLOpeningMethods() {
+        print("DEBUG: testAllURLOpeningMethods called")
         
         let urlString = "https://profiles.acloudradius.net"
-        guard let targetURL = URL(string: urlString) else {
-            statusLabel.text = "ERROR: Invalid URL"
+        guard let url = URL(string: urlString) else {
+            statusLabel.text = "ERROR: Cannot create URL"
+            showAlert(title: "Error", message: "Invalid URL: \(urlString)")
             return
         }
         
-        // Check all available browsers
-        let browsers = detectAvailableBrowsers()
-        print("DEBUG: Found \(browsers.count) available browsers")
+        print("DEBUG: Testing URL: \(url)")
+        statusLabel.text = "Step 1: Testing Safari direct..."
         
-        // Create action sheet with all browser options
-        let alert = UIAlertController(title: "Open Profile Installation", message: "Available browsers and debug info:\n\nTarget URL: \(urlString)", preferredStyle: .actionSheet)
-        
-        // Add browser options
-        for browser in browsers {
-            let action = UIAlertAction(title: "\(browser.name) ✓", style: .default) { _ in
-                self.openInBrowser(browser: browser, url: targetURL)
-            }
-            alert.addAction(action)
-        }
-        
-        // Add debug info option
-        alert.addAction(UIAlertAction(title: "Show Debug Info", style: .default) { _ in
-            self.showDebugInfo()
-        })
-        
-        // Add system default option
-        alert.addAction(UIAlertAction(title: "Try System Default", style: .default) { _ in
-            self.openWithSystemDefault(url: targetURL)
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        // iPad support
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = sender
-            popover.sourceRect = sender.bounds
-        }
-        
-        present(alert, animated: true)
-    }
-    
-    private func detectAvailableBrowsers() -> [Browser] {
-        let browsers = [
-            Browser(name: "Safari", scheme: "https://", packageName: "com.apple.mobilesafari"),
-            Browser(name: "Chrome", scheme: "googlechromes://", packageName: "com.google.chrome.ios"),
-            Browser(name: "Firefox", scheme: "firefox://open-url?url=https://", packageName: "org.mozilla.ios.Firefox"),
-            Browser(name: "Edge", scheme: "microsoft-edge-https://", packageName: "com.microsoft.msedge"),
-            Browser(name: "Opera", scheme: "opera-https://", packageName: "com.operasoftware.OperaTouch"),
-            Browser(name: "Brave", scheme: "brave-https://", packageName: "com.brave.ios.browser")
-        ]
-        
-        return browsers.filter { browser in
-            let testURL = URL(string: browser.scheme)!
-            let canOpen = UIApplication.shared.canOpenURL(testURL)
-            print("DEBUG: Browser \(browser.name) - Can open: \(canOpen)")
-            return canOpen
-        }
-    }
-    
-    private func openInBrowser(browser: Browser, url: URL) {
-        print("DEBUG: Opening in \(browser.name)")
-        statusLabel.text = "Opening in \(browser.name)..."
-        
-        var browserURL: URL
-        
-        if browser.name == "Safari" {
-            browserURL = url
-        } else if browser.name == "Chrome" {
-            browserURL = URL(string: "googlechromes://\(url.absoluteString)")!
-        } else if browser.name == "Firefox" {
-            browserURL = URL(string: "firefox://open-url?url=\(url.absoluteString)")!
-        } else if browser.name == "Edge" {
-            browserURL = URL(string: "microsoft-edge-https://\(url.host!)\(url.path)")!
-        } else if browser.name == "Opera" {
-            browserURL = URL(string: "opera-https://\(url.host!)\(url.path)")!
-        } else if browser.name == "Brave" {
-            browserURL = URL(string: "brave-https://\(url.host!)\(url.path)")!
-        } else {
-            browserURL = url
-        }
-        
-        print("DEBUG: Browser URL: \(browserURL)")
-        
-        UIApplication.shared.open(browserURL, options: [:]) { success in
-            DispatchQueue.main.async {
-                if success {
-                    self.statusLabel.text = "SUCCESS: \(browser.name) opened!"
-                    print("DEBUG: SUCCESS - \(browser.name) opened")
-                } else {
-                    self.statusLabel.text = "FAILED: \(browser.name) didn't open"
-                    print("DEBUG: FAILED - \(browser.name) didn't open")
-                }
-            }
-        }
-    }
-    
-    private func openWithSystemDefault(url: URL) {
-        print("DEBUG: Opening with system default")
-        statusLabel.text = "Trying system default..."
-        
+        // Test 1: Direct Safari
         UIApplication.shared.open(url, options: [:]) { success in
+            print("DEBUG: Direct Safari result: \(success)")
             DispatchQueue.main.async {
                 if success {
-                    self.statusLabel.text = "SUCCESS: System default opened!"
+                    self.statusLabel.text = "SUCCESS: Safari opened!"
                 } else {
-                    self.statusLabel.text = "FAILED: System default didn't work"
+                    self.statusLabel.text = "Step 2: Safari failed, trying Chrome..."
+                    self.testChrome(url: url)
                 }
             }
         }
     }
     
-    private func showDebugInfo() {
-        let urlString = "https://profiles.acloudradius.net"
-        guard let url = URL(string: urlString) else { return }
+    private func testChrome(url: URL) {
+        print("DEBUG: Testing Chrome")
         
-        var debugText = "=== DEBUG INFO ===\n\n"
-        debugText += "Target URL: \(urlString)\n"
-        debugText += "URL valid: \(url.absoluteString)\n"
-        debugText += "Main thread: \(Thread.isMainThread)\n"
-        debugText += "iOS version: \(UIDevice.current.systemVersion)\n\n"
-        
-        debugText += "Browser Capabilities:\n"
-        let testBrowsers = [
-            ("Safari", "https://"),
-            ("Chrome", "googlechromes://"),
-            ("Firefox", "firefox://"),
-            ("Edge", "microsoft-edge-https://"),
-            ("System HTTPS", "https://")
-        ]
-        
-        for (name, scheme) in testBrowsers {
-            if let testURL = URL(string: scheme) {
-                let canOpen = UIApplication.shared.canOpenURL(testURL)
-                debugText += "• \(name): \(canOpen ? "✓" : "✗")\n"
-            }
+        let chromeURL = "googlechromes://\(url.absoluteString)"
+        guard let chromeURLObject = URL(string: chromeURL) else {
+            statusLabel.text = "Step 3: Chrome URL invalid, trying Settings..."
+            testSettings()
+            return
         }
         
-        debugText += "\n📱 To see detailed logs:\n"
-        debugText += "1. Connect device to Mac\n"
-        debugText += "2. Open Console app\n"
-        debugText += "3. Select your device\n"
-        debugText += "4. Filter by 'ACCNeoX'\n"
-        debugText += "5. Press button again\n"
+        UIApplication.shared.open(chromeURLObject, options: [:]) { success in
+            print("DEBUG: Chrome result: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "SUCCESS: Chrome opened!"
+                } else {
+                    self.statusLabel.text = "Step 3: Chrome failed, trying Settings..."
+                    self.testSettings()
+                }
+            }
+        }
+    }
+    
+    private func testSettings() {
+        print("DEBUG: Testing Settings app as fallback")
         
-        let alert = UIAlertController(title: "Debug Information", message: debugText, preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Copy Debug Info", style: .default) { _ in
-            UIPasteboard.general.string = debugText
-            self.statusLabel.text = "Debug info copied to clipboard"
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+            statusLabel.text = "ERROR: Cannot create Settings URL"
+            showCompleteFailure()
+            return
+        }
+        
+        statusLabel.text = "Testing if URL opening works at all..."
+        
+        UIApplication.shared.open(settingsURL, options: [:]) { success in
+            print("DEBUG: Settings app result: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "URL opening works! But browsers are restricted."
+                    self.showBrowserRestrictedAlert()
+                } else {
+                    self.statusLabel.text = "CRITICAL: Cannot open any URLs"
+                    self.showCompleteFailure()
+                }
+            }
+        }
+    }
+    
+    private func showBrowserRestrictedAlert() {
+        let alert = UIAlertController(
+            title: "Browsers Restricted",
+            message: "URL opening works (Settings app opened), but Safari and Chrome are blocked.\n\nThis could be due to:\n• Screen Time restrictions\n• Device management policies\n• Parental controls\n• App sandbox limitations\n\nPlease check your device settings.",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Show Debug Info", style: .default) { _ in
+            self.showInlineDebugInfo()
         })
+        
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
     
-    struct Browser {
-        let name: String
-        let scheme: String
-        let packageName: String
+    private func showCompleteFailure() {
+        let alert = UIAlertController(
+            title: "Critical Error",
+            message: "Cannot open any URLs on this device. This indicates a serious system restriction or app sandbox issue.\n\nPlease check:\n• Device management settings\n• Screen Time settings\n• App-specific restrictions",
+            preferredStyle: .alert
+        )
+        
+        alert.addAction(UIAlertAction(title: "Show Debug Info", style: .default) { _ in
+            self.showInlineDebugInfo()
+        })
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    private func showInlineDebugInfo() {
+        let urlString = "https://profiles.acloudradius.net"
+        guard let url = URL(string: urlString) else { return }
+        
+        // Create visible debug information
+        var debugText = "=== DEBUG INFORMATION ===\n\n"
+        debugText += "Target URL: \(urlString)\n"
+        debugText += "iOS Version: \(UIDevice.current.systemVersion)\n"
+        debugText += "Device Model: \(UIDevice.current.model)\n"
+        debugText += "App Bundle ID: \(Bundle.main.bundleIdentifier ?? "unknown")\n\n"
+        
+        // Test URL schemes
+        let testSchemes = [
+            ("Safari HTTPS", "https://apple.com"),
+            ("Chrome", "googlechromes://apple.com"),
+            ("Settings", UIApplication.openSettingsURLString)
+        ]
+        
+        debugText += "URL Scheme Tests:\n"
+        for (name, scheme) in testSchemes {
+            if let testURL = URL(string: scheme) {
+                let canOpen = UIApplication.shared.canOpenURL(testURL)
+                debugText += "• \(name): \(canOpen ? "✓ Available" : "✗ Blocked")\n"
+            }
+        }
+        
+        debugText += "\n📱 Device Logs:\n"
+        debugText += "1. Connect to Mac\n"
+        debugText += "2. Open Console app\n"
+        debugText += "3. Select device\n"
+        debugText += "4. Search 'ACCNeoX'\n"
+        debugText += "5. Press button again\n"
+        
+        let alert = UIAlertController(title: "Debug Information", message: debugText, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Copy to Clipboard", style: .default) { _ in
+            UIPasteboard.general.string = debugText
+            self.statusLabel.text = "Debug info copied to clipboard!"
+        })
+        
+        alert.addAction(UIAlertAction(title: "Try Manual URL", style: .default) { _ in
+            self.showManualURLInstructions()
+        })
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        
+        present(alert, animated: true)
+    }
+    
+    private func showManualURLInstructions() {
+        let alert = UIAlertController(
+            title: "Manual Instructions",
+            message: "Since automatic opening isn't working, please:\n\n1. Open Safari manually\n2. Go to: https://profiles.acloudradius.net\n3. Follow the profile installation steps\n4. Return to this app\n\nThe URL has been copied to your clipboard.",
+            preferredStyle: .alert
+        )
+        
+        UIPasteboard.general.string = "https://profiles.acloudradius.net"
+        statusLabel.text = "Manual instructions shown - URL copied to clipboard"
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func checkNetworkAndUpdateAdvertisement() {
