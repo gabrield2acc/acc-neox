@@ -48,6 +48,9 @@ class ViewController: UIViewController {
             print("✅ advertisementImageView outlet is connected")
         }
         
+        // Add debug gesture recognizers for testing UI switching
+        setupDebugGestures()
+        
         // Configure button
         profileButton.setTitle("Access Free WiFi", for: .normal)
         profileButton.backgroundColor = .systemOrange
@@ -80,6 +83,55 @@ class ViewController: UIViewController {
         loadDefaultImage()
         
         print("🔵 UI setup completed successfully")
+    }
+    
+    private func setupDebugGestures() {
+        // Double tap on image to force switch to SONY
+        let doubleTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugDoubleTapped))
+        doubleTapGesture.numberOfTapsRequired = 2
+        advertisementImageView.addGestureRecognizer(doubleTapGesture)
+        advertisementImageView.isUserInteractionEnabled = true
+        
+        // Triple tap on image to force switch back to neoX
+        let tripleTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugTripleTapped))
+        tripleTapGesture.numberOfTapsRequired = 3
+        advertisementImageView.addGestureRecognizer(tripleTapGesture)
+        
+        // Long press on status label to force network detection
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(debugLongPressed))
+        longPressGesture.minimumPressDuration = 2.0
+        statusLabel.addGestureRecognizer(longPressGesture)
+        statusLabel.isUserInteractionEnabled = true
+        
+        print("🧪 Debug gestures enabled:")
+        print("  - Double tap image: Force switch to SONY branding")
+        print("  - Triple tap image: Force switch to neoX branding") 
+        print("  - Long press status: Force network detection")
+    }
+    
+    @objc private func debugDoubleTapped() {
+        print("🧪 DEBUG: Double tap detected - forcing SONY branding")
+        networkMonitor.testUISwitch(toSONY: true)
+    }
+    
+    @objc private func debugTripleTapped() {
+        print("🧪 DEBUG: Triple tap detected - forcing neoX branding")
+        networkMonitor.testUISwitch(toSONY: false)
+    }
+    
+    @objc private func debugLongPressed(gesture: UILongPressGestureRecognizer) {
+        if gesture.state == .began {
+            print("🧪 DEBUG: Long press detected - forcing network detection")
+            let detected = networkMonitor.forceDetectACLCloudRadiusRealm()
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if detected {
+                    self.statusLabel.text = "🧪 Debug: Forced ACLCloudRadius detection!"
+                } else {
+                    self.statusLabel.text = "🧪 Debug: Force detection failed"
+                }
+            }
+        }
     }
     
     @IBAction @objc func installProfileButtonTapped(_ sender: UIButton) {
@@ -279,9 +331,15 @@ class ViewController: UIViewController {
 // MARK: - NetworkMonitorDelegate
 extension ViewController: NetworkMonitorDelegate {
     func networkStatusChanged(isPasspointConnected: Bool, networkInfo: NetworkInfo?) {
-        print("🔍 Network status changed - Passpoint: \(isPasspointConnected), Info: \(networkInfo?.ssid ?? "None")")
+        print("🔍 ViewController: Network status changed")
+        print("  - Passpoint Connected: \(isPasspointConnected)")
+        print("  - Network SSID: \(networkInfo?.ssid ?? "None")")
+        print("  - Network Realm: \(networkInfo?.realm ?? "None")")
+        print("  - Is ACLCloudRadius Realm: \(networkInfo?.isACLCloudRadiusRealm ?? false)")
         
         let isACLCloudRadiusConnected = networkInfo?.isACLCloudRadiusRealm == true
+        print("🔍 ViewController: Will update UI - ACLCloudRadius connected: \(isACLCloudRadiusConnected)")
+        
         updateUIForNetworkStatus(isACLCloudRadiusConnected: isACLCloudRadiusConnected, networkInfo: networkInfo)
     }
 }
