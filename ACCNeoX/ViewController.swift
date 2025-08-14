@@ -136,24 +136,283 @@ class ViewController: UIViewController {
     }
     
     private func openProfileInstallationURL() {
-        guard let url = URL(string: "https://profiles.acloudradius.net") else {
-            print("DEBUG: Failed to create URL")
+        let targetURL = "https://profiles.acloudradius.net"
+        print("DEBUG: Starting comprehensive URL opening for: \(targetURL)")
+        statusLabel.text = "Attempting to open browser..."
+        
+        // Method 1: Try direct HTTPS URL opening
+        tryDirectHTTPS(targetURL)
+    }
+    
+    private func tryDirectHTTPS(_ urlString: String) {
+        guard let url = URL(string: urlString) else {
+            print("DEBUG: Failed to create URL from: \(urlString)")
             statusLabel.text = "Error: Invalid URL"
             return
         }
         
-        print("DEBUG: Opening URL in default browser: \(url)")
-        UIApplication.shared.open(url, options: [:]) { success in
+        print("DEBUG: Method 1 - Trying direct HTTPS: \(url)")
+        
+        // Check if URL can be opened first
+        if UIApplication.shared.canOpenURL(url) {
+            print("DEBUG: canOpenURL returned true for HTTPS")
+            UIApplication.shared.open(url, options: [:]) { success in
+                print("DEBUG: Direct HTTPS result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Browser opened! Install the WiFi profile and return to this app."
+                    } else {
+                        print("DEBUG: Direct HTTPS failed, trying Safari scheme")
+                        self.statusLabel.text = "Method 1 failed, trying Safari scheme..."
+                        self.trySafariScheme(urlString)
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for HTTPS, trying Safari scheme")
+            statusLabel.text = "HTTPS blocked, trying Safari scheme..."
+            trySafariScheme(urlString)
+        }
+    }
+    
+    private func trySafariScheme(_ urlString: String) {
+        // Method 2: Try safari-https:// scheme
+        let safariURL = "safari-https://\(urlString.replacingOccurrences(of: "https://", with: ""))"
+        guard let url = URL(string: safariURL) else {
+            print("DEBUG: Failed to create Safari scheme URL")
+            tryChrome(urlString)
+            return
+        }
+        
+        print("DEBUG: Method 2 - Trying Safari scheme: \(url)")
+        
+        if UIApplication.shared.canOpenURL(url) {
+            print("DEBUG: canOpenURL returned true for Safari scheme")
+            UIApplication.shared.open(url, options: [:]) { success in
+                print("DEBUG: Safari scheme result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Safari opened! Install the WiFi profile and return to this app."
+                    } else {
+                        print("DEBUG: Safari scheme failed, trying Chrome")
+                        self.statusLabel.text = "Method 2 failed, trying Chrome..."
+                        self.tryChrome(urlString)
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for Safari scheme, trying Chrome")
+            statusLabel.text = "Safari scheme blocked, trying Chrome..."
+            tryChrome(urlString)
+        }
+    }
+    
+    private func tryChrome(_ urlString: String) {
+        // Method 3: Try Chrome
+        let chromeURL = "googlechromes://\(urlString.replacingOccurrences(of: "https://", with: ""))"
+        guard let url = URL(string: chromeURL) else {
+            print("DEBUG: Failed to create Chrome URL")
+            tryEdge(urlString)
+            return
+        }
+        
+        print("DEBUG: Method 3 - Trying Chrome: \(url)")
+        
+        if UIApplication.shared.canOpenURL(url) {
+            print("DEBUG: canOpenURL returned true for Chrome")
+            UIApplication.shared.open(url, options: [:]) { success in
+                print("DEBUG: Chrome result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Chrome opened! Install the WiFi profile and return to this app."
+                    } else {
+                        print("DEBUG: Chrome failed, trying Edge")
+                        self.statusLabel.text = "Method 3 failed, trying Edge..."
+                        self.tryEdge(urlString)
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for Chrome, trying Edge")
+            statusLabel.text = "Chrome not available, trying Edge..."
+            tryEdge(urlString)
+        }
+    }
+    
+    private func tryEdge(_ urlString: String) {
+        // Method 4: Try Microsoft Edge
+        let edgeURL = "microsoft-edge-https://\(urlString.replacingOccurrences(of: "https://", with: ""))"
+        guard let url = URL(string: edgeURL) else {
+            print("DEBUG: Failed to create Edge URL")
+            tryFirefox(urlString)
+            return
+        }
+        
+        print("DEBUG: Method 4 - Trying Edge: \(url)")
+        
+        if UIApplication.shared.canOpenURL(url) {
+            print("DEBUG: canOpenURL returned true for Edge")
+            UIApplication.shared.open(url, options: [:]) { success in
+                print("DEBUG: Edge result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Edge opened! Install the WiFi profile and return to this app."
+                    } else {
+                        print("DEBUG: Edge failed, trying Firefox")
+                        self.statusLabel.text = "Method 4 failed, trying Firefox..."
+                        self.tryFirefox(urlString)
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for Edge, trying Firefox")
+            statusLabel.text = "Edge not available, trying Firefox..."
+            tryFirefox(urlString)
+        }
+    }
+    
+    private func tryFirefox(_ urlString: String) {
+        // Method 5: Try Firefox
+        let firefoxURL = "firefox://open-url?url=\(urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? urlString)"
+        guard let url = URL(string: firefoxURL) else {
+            print("DEBUG: Failed to create Firefox URL")
+            trySettings(urlString)
+            return
+        }
+        
+        print("DEBUG: Method 5 - Trying Firefox: \(url)")
+        
+        if UIApplication.shared.canOpenURL(url) {
+            print("DEBUG: canOpenURL returned true for Firefox")
+            UIApplication.shared.open(url, options: [:]) { success in
+                print("DEBUG: Firefox result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Firefox opened! Install the WiFi profile and return to this app."
+                    } else {
+                        print("DEBUG: Firefox failed, testing with Settings")
+                        self.statusLabel.text = "Method 5 failed, testing URL opening..."
+                        self.trySettings(urlString)
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for Firefox, testing with Settings")
+            statusLabel.text = "Firefox not available, testing URL opening..."
+            trySettings(urlString)
+        }
+    }
+    
+    private func trySettings(_ targetURL: String) {
+        // Method 6: Test if URL opening works at all by opening Settings
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+            print("DEBUG: Failed to create Settings URL")
+            showAllMethodsFailed(targetURL)
+            return
+        }
+        
+        print("DEBUG: Method 6 - Testing URL opening capability with Settings")
+        statusLabel.text = "Testing if device allows URL opening..."
+        
+        UIApplication.shared.open(settingsURL, options: [:]) { success in
+            print("DEBUG: Settings test result: \(success)")
             DispatchQueue.main.async {
                 if success {
-                    print("DEBUG: Successfully opened URL in default browser")
-                    self.statusLabel.text = "Safari opened! Install the WiFi profile and return to this app."
+                    print("DEBUG: URL opening works, but all browsers failed")
+                    self.statusLabel.text = "URL opening works, but browsers are restricted"
+                    self.showBrowsersRestrictedMessage(targetURL)
                 } else {
-                    print("DEBUG: Failed to open URL in default browser")
-                    self.statusLabel.text = "Failed to open browser. Please check device settings."
+                    print("DEBUG: URL opening completely disabled")
+                    self.statusLabel.text = "URL opening is completely disabled on this device"
+                    self.showAllMethodsFailed(targetURL)
                 }
             }
         }
+    }
+    
+    private func showBrowsersRestrictedMessage(_ targetURL: String) {
+        let message = "All browser opening methods failed, but URL opening works (Settings opened).\n\nThis suggests browser restrictions are in place.\n\nPlease manually:\n1. Open Safari\n2. Go to: \(targetURL)\n3. Install the profile\n4. Return to this app"
+        
+        let alert = UIAlertController(title: "Browsers Restricted", message: message, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Copy URL", style: .default) { _ in
+            UIPasteboard.general.string = targetURL
+            self.statusLabel.text = "URL copied to clipboard"
+        })
+        
+        alert.addAction(UIAlertAction(title: "Show Debug", style: .default) { _ in
+            self.showDebugInfo(targetURL)
+        })
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    private func showAllMethodsFailed(_ targetURL: String) {
+        let message = "All URL opening methods failed.\n\nThis indicates severe device restrictions.\n\nPlease check:\n• Screen Time settings\n• Device management policies\n• Parental controls\n\nManually open: \(targetURL)"
+        
+        let alert = UIAlertController(title: "Critical: All Methods Failed", message: message, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Copy URL", style: .default) { _ in
+            UIPasteboard.general.string = targetURL
+            self.statusLabel.text = "URL copied to clipboard"
+        })
+        
+        alert.addAction(UIAlertAction(title: "Show Debug", style: .default) { _ in
+            self.showDebugInfo(targetURL)
+        })
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
+    }
+    
+    private func showDebugInfo(_ targetURL: String) {
+        var debugText = "=== COMPREHENSIVE DEBUG INFO ===\n\n"
+        debugText += "Target: \(targetURL)\n"
+        debugText += "iOS: \(UIDevice.current.systemVersion)\n"
+        debugText += "Device: \(UIDevice.current.model)\n"
+        debugText += "Bundle: \(Bundle.main.bundleIdentifier ?? "unknown")\n\n"
+        
+        // Test all URL schemes
+        let schemes = [
+            ("HTTPS Direct", targetURL),
+            ("Safari Scheme", "safari-https://profiles.acloudradius.net"),
+            ("Chrome", "googlechromes://profiles.acloudradius.net"),
+            ("Edge", "microsoft-edge-https://profiles.acloudradius.net"),
+            ("Firefox", "firefox://open-url?url=\(targetURL)"),
+            ("Settings", UIApplication.openSettingsURLString)
+        ]
+        
+        debugText += "URL Scheme Availability:\n"
+        for (name, urlString) in schemes {
+            if let url = URL(string: urlString) {
+                let canOpen = UIApplication.shared.canOpenURL(url)
+                debugText += "• \(name): \(canOpen ? "✓" : "✗")\n"
+            } else {
+                debugText += "• \(name): Invalid URL\n"
+            }
+        }
+        
+        debugText += "\n📝 Manual Steps:\n"
+        debugText += "1. Open Safari manually\n"
+        debugText += "2. Navigate to: \(targetURL)\n"
+        debugText += "3. Follow profile installation steps\n"
+        debugText += "4. Return to ACCNeoX app\n"
+        
+        let alert = UIAlertController(title: "Debug Information", message: debugText, preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Copy Debug Info", style: .default) { _ in
+            UIPasteboard.general.string = debugText
+            self.statusLabel.text = "Debug info copied to clipboard"
+        })
+        
+        alert.addAction(UIAlertAction(title: "Copy URL Only", style: .default) { _ in
+            UIPasteboard.general.string = targetURL
+            self.statusLabel.text = "URL copied to clipboard"
+        })
+        
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     
