@@ -94,5 +94,5 @@ iOSInjectionProject/
 *.mobileprovision
 ExportOptions.plist
 
-# XcodeGen generated project
-*.xcodeproj
+# XcodeGen generated project (allow manually created project)
+# *.xcodeproj
