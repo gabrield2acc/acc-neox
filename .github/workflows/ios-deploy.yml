@@ -48,14 +48,32 @@ jobs:
         
     - name: Clean and Generate Xcode project
       run: |
+        # Show XcodeGen version
+        echo "XcodeGen version:"
+        xcodegen --version
+        
+        # Show project.yml contents
+        echo "Project.yml contents:"
+        cat project.yml
+        
         # Remove existing project to force regeneration
         rm -rf ACCNeoX.xcodeproj
+        echo "Removed existing project file"
         
         # Generate new project with current settings
-        xcodegen generate --spec project.yml
+        echo "Generating Xcode project..."
+        xcodegen generate --spec project.yml --verbose
         
         # Verify project was created
-        ls -la ACCNeoX.xcodeproj
+        echo "Generated project contents:"
+        ls -la ACCNeoX.xcodeproj || echo "Project generation failed"
+        
+        # Show project file info if it exists
+        if [ -d "ACCNeoX.xcodeproj" ]; then
+          echo "Project file details:"
+          file ACCNeoX.xcodeproj/project.pbxproj
+          head -20 ACCNeoX.xcodeproj/project.pbxproj
+        fi
         
     - name: Create App Icons
       run: |
