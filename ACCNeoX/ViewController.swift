@@ -128,28 +128,10 @@ class ViewController: UIViewController {
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
         print("DEBUG: Button tapped - starting profile installation")
-        statusLabel.text = "Button tapped! Preparing to open Safari..."
+        statusLabel.text = "Opening Safari to install profile..."
         
-        // Present action sheet to let user choose Safari approach
-        let alert = UIAlertController(title: "Open Profile Installation", message: "Choose how to open the profile installation page:", preferredStyle: .actionSheet)
-        
-        alert.addAction(UIAlertAction(title: "In-App Safari", style: .default) { _ in
-            self.openProfileInstallationPage()
-        })
-        
-        alert.addAction(UIAlertAction(title: "External Safari", style: .default) { _ in
-            self.openInExternalSafari()
-        })
-        
-        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
-        
-        // For iPad support
-        if let popover = alert.popoverPresentationController {
-            popover.sourceView = sender
-            popover.sourceRect = sender.bounds
-        }
-        
-        present(alert, animated: true)
+        // Directly open in external Safari - most reliable approach
+        openInExternalSafari()
     }
     
     private func openProfileInstallationPage() {
@@ -182,23 +164,42 @@ class ViewController: UIViewController {
     
     private func openInExternalSafari() {
         print("DEBUG: openInExternalSafari called")
+        
         guard let url = URL(string: "https://profiles.acloudradius.net") else {
             print("DEBUG: URL creation failed for external Safari")
-            showAlert(title: "Error", message: "Invalid URL")
+            DispatchQueue.main.async {
+                self.statusLabel.text = "Error: Invalid URL"
+                self.showAlert(title: "Error", message: "Could not create URL for profile installation")
+            }
             return
         }
         
-        print("DEBUG: Opening URL in external Safari: \(url)")
-        statusLabel.text = "Opening in external Safari..."
+        print("DEBUG: URL created successfully: \(url)")
+        print("DEBUG: Checking if URL can be opened...")
+        
+        // First check if the URL can be opened
+        guard UIApplication.shared.canOpenURL(url) else {
+            print("DEBUG: Cannot open URL - no app available")
+            DispatchQueue.main.async {
+                self.statusLabel.text = "Error: Cannot open Safari"
+                self.showAlert(title: "Error", message: "Safari is not available to open this URL")
+            }
+            return
+        }
+        
+        print("DEBUG: URL can be opened, attempting to open...")
+        statusLabel.text = "Opening Safari..."
         
         UIApplication.shared.open(url, options: [:]) { success in
+            print("DEBUG: UIApplication.shared.open completed with success: \(success)")
             DispatchQueue.main.async {
                 if success {
                     print("DEBUG: Successfully opened URL in external Safari")
-                    self.statusLabel.text = "Opened in Safari. Please install the profile and return to this app."
+                    self.statusLabel.text = "Safari opened! Install the WiFi profile and return to this app."
                 } else {
                     print("DEBUG: Failed to open URL in external Safari")
-                    self.statusLabel.text = "Failed to open Safari. Please try again."
+                    self.statusLabel.text = "Failed to open Safari. Please check device settings."
+                    self.showAlert(title: "Error", message: "Unable to open Safari. Please check if Safari is enabled in device settings.")
                 }
             }
         }
