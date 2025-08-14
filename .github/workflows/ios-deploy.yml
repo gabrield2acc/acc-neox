@@ -12,7 +12,7 @@ env:
   
 jobs:
   build-and-deploy:
-    runs-on: macos-15
+    runs-on: macos-14
     
     steps:
     - name: Checkout code
@@ -147,10 +147,16 @@ jobs:
         echo "Available iOS SDKs:"
         echo "$AVAILABLE_SDKS"
         
-        # Try to find iOS 17.x first, fallback to latest available
+        # Try to find iOS 17.x first, then 16.x, fallback to latest available
         LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos17\." | tail -1)
         if [ -z "$LATEST_IOS_SDK" ]; then
-          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | head -1)
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos16\." | tail -1)
+        fi
+        if [ -z "$LATEST_IOS_SDK" ]; then
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -v "18\." | tail -1)
+        fi
+        if [ -z "$LATEST_IOS_SDK" ]; then
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | tail -1)
         fi
         echo "Using iOS SDK: $LATEST_IOS_SDK"
         
@@ -170,7 +176,7 @@ jobs:
           DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
           CODE_SIGN_STYLE=Manual \
           ONLY_ACTIVE_ARCH=NO \
-          IPHONEOS_DEPLOYMENT_TARGET=15.0 \
+          IPHONEOS_DEPLOYMENT_TARGET=14.0 \
           archive
           
     - name: Export IPA

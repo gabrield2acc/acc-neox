@@ -3,19 +3,19 @@ options:
   bundleIdPrefix: net.acloudradius
   createIntermediateGroups: true
   deploymentTarget:
-    iOS: 15.0
+    iOS: 14.0
   developmentLanguage: en
   xcodeVersion: "15.4"
 
 settings:
   MARKETING_VERSION: 1.0
-  CURRENT_PROJECT_VERSION: 27
+  CURRENT_PROJECT_VERSION: 28
 
 targets:
   ACCNeoX:
     type: application
     platform: iOS
-    deploymentTarget: 15.0
+    deploymentTarget: 14.0
     sources:
       - path: ACCNeoX
         excludes:
