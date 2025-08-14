@@ -44,7 +44,6 @@ class ViewController: UIViewController {
         sender.backgroundColor = .systemGreen
         statusLabel.text = "Opening profile page..."
         
-        // Open the root URL (not /generate) as suggested
         let urlString = "https://profiles.acloudradius.net/"
         
         guard let url = URL(string: urlString) else {
@@ -55,18 +54,36 @@ class ViewController: UIViewController {
         
         print("Opening URL: \(url)")
         
-        // Use SFSafariViewController as recommended by Apple
-        let safariVC = SFSafariViewController(url: url)
-        safariVC.dismissButtonStyle = .close
-        safariVC.delegate = self
-        
-        present(safariVC, animated: true) {
-            self.statusLabel.text = "Profile page opened - follow the instructions to install."
+        // Try to open in default browser first (external app)
+        if UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url, options: [:]) { [weak self] success in
+                DispatchQueue.main.async {
+                    if success {
+                        self?.statusLabel.text = "Profile page opened in browser - follow the instructions to install."
+                    } else {
+                        // Fallback to SFSafariViewController
+                        self?.openWithSafariViewController(url: url)
+                    }
+                }
+            }
+        } else {
+            // Fallback to SFSafariViewController
+            openWithSafariViewController(url: url)
         }
         
         // Reset button color after 2 seconds
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
             sender.backgroundColor = .systemOrange
+        }
+    }
+    
+    private func openWithSafariViewController(url: URL) {
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.dismissButtonStyle = .close
+        safariVC.delegate = self
+        
+        present(safariVC, animated: true) {
+            self.statusLabel.text = "Profile page opened in Safari - follow the instructions to install."
         }
     }
     
