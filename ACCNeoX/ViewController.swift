@@ -127,11 +127,15 @@ class ViewController: UIViewController {
     }
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
-        print("DEBUG: Button tapped - starting profile installation")
-        statusLabel.text = "Opening Safari to install profile..."
+        print("DEBUG: ===== BUTTON TAPPED =====")
+        print("DEBUG: Button sender: \(sender)")
+        print("DEBUG: Current thread: \(Thread.current)")
+        print("DEBUG: Is main thread: \(Thread.isMainThread)")
         
-        // Directly open in external Safari - most reliable approach
-        openInExternalSafari()
+        statusLabel.text = "Button pressed! Attempting to open Safari..."
+        
+        // Try multiple approaches to open URL
+        openURLWithMultipleMethods()
     }
     
     private func openProfileInstallationPage() {
@@ -203,6 +207,103 @@ class ViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    private func openURLWithMultipleMethods() {
+        print("DEBUG: openURLWithMultipleMethods called")
+        
+        let urlString = "https://profiles.acloudradius.net"
+        guard let url = URL(string: urlString) else {
+            print("DEBUG: FAILED to create URL from string: \(urlString)")
+            statusLabel.text = "ERROR: Invalid URL"
+            return
+        }
+        
+        print("DEBUG: URL created successfully: \(url)")
+        print("DEBUG: URL scheme: \(url.scheme ?? "nil")")
+        print("DEBUG: URL host: \(url.host ?? "nil")")
+        
+        // Method 1: Check if Safari is available
+        let safariURL = URL(string: "safari://")!
+        let canOpenSafari = UIApplication.shared.canOpenURL(safariURL)
+        print("DEBUG: Can open Safari app: \(canOpenSafari)")
+        
+        // Method 2: Check if we can open HTTPS URLs
+        let canOpenHTTPS = UIApplication.shared.canOpenURL(url)
+        print("DEBUG: Can open HTTPS URL: \(canOpenHTTPS)")
+        
+        statusLabel.text = "Checking URL opening capabilities..."
+        
+        // Try approach 1: Direct URL open
+        print("DEBUG: === ATTEMPTING METHOD 1: Direct URL open ===")
+        UIApplication.shared.open(url, options: [:]) { success in
+            print("DEBUG: Method 1 result: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "SUCCESS: Safari opened!"
+                    print("DEBUG: SUCCESS - Safari opened with direct method")
+                } else {
+                    print("DEBUG: Method 1 FAILED, trying method 2")
+                    self.tryMethod2(url: url)
+                }
+            }
+        }
+    }
+    
+    private func tryMethod2(url: URL) {
+        print("DEBUG: === ATTEMPTING METHOD 2: With options ===")
+        statusLabel.text = "Trying alternate method..."
+        
+        let options: [UIApplication.OpenExternalURLOptionsKey: Any] = [
+            .universalLinksOnly: false
+        ]
+        
+        UIApplication.shared.open(url, options: options) { success in
+            print("DEBUG: Method 2 result: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "SUCCESS: Safari opened (method 2)!"
+                    print("DEBUG: SUCCESS - Safari opened with method 2")
+                } else {
+                    print("DEBUG: Method 2 FAILED, trying method 3")
+                    self.tryMethod3()
+                }
+            }
+        }
+    }
+    
+    private func tryMethod3() {
+        print("DEBUG: === ATTEMPTING METHOD 3: Settings app (fallback) ===")
+        statusLabel.text = "Opening Settings app as test..."
+        
+        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+            print("DEBUG: FAILED to create Settings URL")
+            statusLabel.text = "ERROR: Cannot create Settings URL"
+            return
+        }
+        
+        UIApplication.shared.open(settingsURL, options: [:]) { success in
+            print("DEBUG: Method 3 (Settings) result: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "Settings opened - URL opening works! Safari may be restricted."
+                    self.showSafariError()
+                } else {
+                    self.statusLabel.text = "ERROR: Cannot open any URLs on this device"
+                    print("DEBUG: CRITICAL - Cannot open any URLs at all")
+                }
+            }
+        }
+    }
+    
+    private func showSafariError() {
+        let alert = UIAlertController(
+            title: "Safari Issue", 
+            message: "URL opening works, but Safari won't open. This could be due to:\n\n1. Safari is disabled in Screen Time\n2. Safari is restricted by device management\n3. App sandbox restrictions\n\nPlease check Safari settings.", 
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        present(alert, animated: true)
     }
     
     private func checkNetworkAndUpdateAdvertisement() {
