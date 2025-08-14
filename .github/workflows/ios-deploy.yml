@@ -192,29 +192,40 @@ jobs:
         else
           echo "❌ Build failed with $LATEST_IOS_SDK"
           
-          # Try with the latest available iOS SDK as fallback
-          FALLBACK_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
-          if [ "$FALLBACK_SDK" != "$LATEST_IOS_SDK" ]; then
-            echo "🔄 Retrying with fallback SDK: $FALLBACK_SDK"
-            
-            xcodebuild \
-              -project ACCNeoX.xcodeproj \
-              -scheme ACCNeoX \
-              -configuration Release \
-              -sdk "$FALLBACK_SDK" \
-              -archivePath $PWD/build/ACCNeoX.xcarchive \
-              PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
-              CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
-              DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
-              CODE_SIGN_STYLE=Manual \
-              ONLY_ACTIVE_ARCH=NO \
-              IPHONEOS_DEPLOYMENT_TARGET=14.0 \
-              archive
-            
-            BUILD_SUCCESS=true
-            echo "✅ Build succeeded with fallback SDK $FALLBACK_SDK"
-          else
-            echo "💥 Build failed and no alternative SDK available"
+          # Try with alternative SDKs in order of preference
+          ALL_IOS_SDKS=($(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}'))
+          echo "All available iOS SDKs: ${ALL_IOS_SDKS[@]}"
+          
+          # Try each available SDK until one works
+          for SDK in "${ALL_IOS_SDKS[@]}"; do
+            if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
+              echo "🔄 Trying fallback SDK: $SDK"
+              
+              if xcodebuild \
+                -project ACCNeoX.xcodeproj \
+                -scheme ACCNeoX \
+                -configuration Release \
+                -sdk "$SDK" \
+                -archivePath $PWD/build/ACCNeoX.xcarchive \
+                PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
+                CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
+                DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+                CODE_SIGN_STYLE=Manual \
+                ONLY_ACTIVE_ARCH=NO \
+                IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+                archive; then
+                
+                BUILD_SUCCESS=true
+                echo "✅ Build succeeded with fallback SDK $SDK"
+                break
+              else
+                echo "❌ Build also failed with $SDK, trying next..."
+              fi
+            fi
+          done
+          
+          if [ "$BUILD_SUCCESS" = false ]; then
+            echo "💥 Build failed with all available iOS SDKs: ${ALL_IOS_SDKS[@]}"
             exit 1
           fi
         fi
