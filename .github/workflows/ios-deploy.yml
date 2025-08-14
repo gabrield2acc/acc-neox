@@ -136,11 +136,17 @@ jobs:
     - name: Build iOS App
       run: |
         mkdir -p build
+        
+        # List available destinations for debugging
+        echo "Available build destinations:"
+        xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations | head -20
+        
+        # Build with explicit destination
         xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
           -configuration Release \
-          -sdk iphoneos \
+          -destination "generic/platform=iOS" \
           -archivePath $PWD/build/ACCNeoX.xcarchive \
           PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
           CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
