@@ -12,7 +12,7 @@ env:
   
 jobs:
   build-and-deploy:
-    runs-on: macos-15
+    runs-on: macos-14
     
     steps:
     - name: Checkout code
@@ -20,14 +20,22 @@ jobs:
       
     - name: Select Xcode version
       run: |
+        # List available Xcode versions first
+        echo "Available Xcode versions:"
+        ls -la /Applications/Xcode*.app 2>/dev/null || echo "No Xcode versions found"
+        
         # Use a stable Xcode version that has all platforms installed
         if [ -d "/Applications/Xcode_15.4.app" ]; then
+          echo "Using Xcode 15.4"
           sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+        elif [ -d "/Applications/Xcode_15.2.app" ]; then
+          echo "Using Xcode 15.2"
+          sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
         elif [ -d "/Applications/Xcode_15.0.app" ]; then
+          echo "Using Xcode 15.0"
           sudo xcode-select -s /Applications/Xcode_15.0.app/Contents/Developer
-        elif [ -d "/Applications/Xcode_16.0.app" ]; then
-          sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
         else
+          echo "Using default Xcode"
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
         fi
       
@@ -90,6 +98,16 @@ jobs:
     - name: List available schemes
       run: xcodebuild -project ACCNeoX.xcodeproj -list
         
+    - name: List available destinations
+      run: |
+        echo "Available destinations:"
+        xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations
+        
+    - name: List available SDKs
+      run: |
+        echo "Available SDKs:"
+        xcodebuild -showsdks
+        
     - name: Build iOS App
       run: |
         mkdir -p build
@@ -97,12 +115,13 @@ jobs:
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
           -configuration Release \
-          -destination generic/platform=iOS \
+          -sdk iphoneos \
           -archivePath $PWD/build/ACCNeoX.xcarchive \
           PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
           CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
           DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
           CODE_SIGN_STYLE=Manual \
+          ONLY_ACTIVE_ARCH=NO \
           archive
           
     - name: Export IPA
