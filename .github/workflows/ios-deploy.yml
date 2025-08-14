@@ -194,7 +194,7 @@ jobs:
         
         # Check if destinations are available and try different build approaches
         DESTINATIONS_AVAILABLE=false
-        if xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations | grep -q "platform:iOS.*id:dvtdevice-DVTiPhonePlaceholder.*name:Any iOS Device" | grep -v "error:"; then
+        if xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations | grep -q "Any iOS Device"; then
           DESTINATIONS_AVAILABLE=true
           echo "✅ iOS device destinations are available"
         else
@@ -215,12 +215,8 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           IPHONEOS_DEPLOYMENT_TARGET=14.0"
         
-        # Add destination if available
-        if [ "$DESTINATIONS_AVAILABLE" = true ]; then
-          BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
-        else
-          BUILD_CMD="$BUILD_CMD archive"
-        fi
+        # Always add destination parameter for iOS device builds
+        BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
         
         echo "Executing build command: $BUILD_CMD"
         if eval $BUILD_CMD; then
@@ -252,12 +248,8 @@ jobs:
                 ONLY_ACTIVE_ARCH=NO \
                 IPHONEOS_DEPLOYMENT_TARGET=14.0"
               
-              # Add destination if available
-              if [ "$DESTINATIONS_AVAILABLE" = true ]; then
-                FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
-              else
-                FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD archive"
-              fi
+              # Always add destination parameter for iOS device builds  
+              FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
               
               if eval $FALLBACK_BUILD_CMD; then
                 
