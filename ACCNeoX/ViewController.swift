@@ -1,6 +1,7 @@
 import UIKit
 import SystemConfiguration.CaptiveNetwork
 import NetworkExtension
+import WebKit
 
 class ViewController: UIViewController {
     
@@ -126,13 +127,38 @@ class ViewController: UIViewController {
     }
     
     @IBAction func installProfileButtonTapped(_ sender: UIButton) {
-        print("DEBUG: Install WiFi Profile button tapped")
+        print("DEBUG: ========== BUTTON TAPPED ===========")
         
-        // Update status to show we're opening the profile installation page
-        statusLabel.text = "Opening profile installation page..."
+        // IMMEDIATE visual feedback to confirm method is called
+        sender.backgroundColor = .systemRed
+        statusLabel.text = "BUTTON PRESSED! Method called successfully."
         
-        // Open the profile installation URL in the default browser
-        openProfileInstallationURL()
+        // Show an alert to confirm the method is working
+        let alert = UIAlertController(title: "Button Works!", message: "Method is being called. Choose how to open URL:", preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Try External Browser", style: .default) { _ in
+            self.openProfileInstallationURL()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Open In WebView", style: .default) { _ in
+            self.openInWebView()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Test Basic URL", style: .default) { _ in
+            self.testBasicURL()
+        })
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            sender.backgroundColor = .systemOrange
+            self.statusLabel.text = "Tap the button to install your WiFi profile"
+        })
+        
+        present(alert, animated: true)
+        
+        // Reset button color after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            sender.backgroundColor = .systemOrange
+        }
     }
     
     private func openProfileInstallationURL() {
@@ -413,6 +439,109 @@ class ViewController: UIViewController {
         
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
+    }
+    
+    private func openInWebView() {
+        guard let url = URL(string: "https://profiles.acloudradius.net") else {
+            statusLabel.text = "Error: Could not create URL"
+            return
+        }
+        
+        print("DEBUG: Opening URL in WebView: \(url)")
+        statusLabel.text = "Loading profile page in WebView..."
+        
+        // Create WebView
+        let webView = WKWebView(frame: view.bounds)
+        webView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        webView.backgroundColor = .systemBackground
+        
+        // Create navigation controller with WebView
+        let webViewController = UIViewController()
+        webViewController.view = webView
+        webViewController.title = "Install WiFi Profile"
+        webViewController.navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: "Close", 
+            style: .done, 
+            target: self, 
+            action: #selector(closeWebView)
+        )
+        
+        let navController = UINavigationController(rootViewController: webViewController)
+        navController.modalPresentationStyle = .fullScreen
+        
+        // Load the URL
+        let request = URLRequest(url: url)
+        webView.load(request)
+        
+        // Present the WebView
+        present(navController, animated: true) {
+            self.statusLabel.text = "WebView opened with profile page"
+        }
+    }
+    
+    @objc private func closeWebView() {
+        dismiss(animated: true) {
+            self.statusLabel.text = "WebView closed. Check Settings if you installed a profile."
+            // Check network after WebView closes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                self.checkNetworkAndUpdateAdvertisement()
+            }
+        }
+    }
+    
+    private func testBasicURL() {
+        print("DEBUG: Testing basic URL opening capabilities")
+        statusLabel.text = "Testing basic URL opening..."
+        
+        // Test with Apple's website first
+        guard let appleURL = URL(string: "https://www.apple.com") else {
+            statusLabel.text = "Error: Could not create Apple URL"
+            return
+        }
+        
+        print("DEBUG: Testing with Apple URL: \(appleURL)")
+        
+        if UIApplication.shared.canOpenURL(appleURL) {
+            print("DEBUG: canOpenURL returned true for Apple.com")
+            UIApplication.shared.open(appleURL, options: [:]) { success in
+                print("DEBUG: Apple URL opening result: \(success)")
+                DispatchQueue.main.async {
+                    if success {
+                        self.statusLabel.text = "Basic URL opening works! Apple.com opened."
+                        // Now try our target URL
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            self.tryTargetURLAfterApple()
+                        }
+                    } else {
+                        self.statusLabel.text = "Basic URL opening failed even for Apple.com"
+                    }
+                }
+            }
+        } else {
+            print("DEBUG: canOpenURL returned false for Apple.com")
+            statusLabel.text = "Error: canOpenURL failed for Apple.com - severe restrictions"
+        }
+    }
+    
+    private func tryTargetURLAfterApple() {
+        guard let targetURL = URL(string: "https://profiles.acloudradius.net") else {
+            statusLabel.text = "Error: Could not create target URL"
+            return
+        }
+        
+        print("DEBUG: Now trying target URL after Apple success: \(targetURL)")
+        statusLabel.text = "Apple worked, now trying target URL..."
+        
+        UIApplication.shared.open(targetURL, options: [:]) { success in
+            print("DEBUG: Target URL result after Apple success: \(success)")
+            DispatchQueue.main.async {
+                if success {
+                    self.statusLabel.text = "SUCCESS! Target URL opened after Apple test."
+                } else {
+                    self.statusLabel.text = "Target URL failed even though Apple worked."
+                }
+            }
+        }
     }
     
     
