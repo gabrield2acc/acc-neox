@@ -17,12 +17,43 @@ class ViewController: UIViewController {
     }
     
     private func setupUI() {
+        print("🔵 Setting up UI components...")
+        
+        // Verify outlets are connected
+        if profileButton == nil {
+            print("❌ ERROR: profileButton outlet is nil!")
+        } else {
+            print("✅ profileButton outlet is connected")
+        }
+        
+        if statusLabel == nil {
+            print("❌ ERROR: statusLabel outlet is nil!")
+        } else {
+            print("✅ statusLabel outlet is connected")
+        }
+        
+        if advertisementImageView == nil {
+            print("❌ ERROR: advertisementImageView outlet is nil!")
+        } else {
+            print("✅ advertisementImageView outlet is connected")
+        }
+        
         // Configure button
         profileButton.setTitle("Access Free WiFi", for: .normal)
         profileButton.backgroundColor = .systemOrange
         profileButton.setTitleColor(.white, for: .normal)
         profileButton.layer.cornerRadius = 8
         profileButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
+        
+        // Add programmatic target as backup
+        print("🔵 Adding programmatic button target...")
+        profileButton.addTarget(self, action: #selector(installProfileButtonTapped(_:)), for: .touchUpInside)
+        
+        // Make button more responsive
+        profileButton.showsTouchWhenHighlighted = true
+        profileButton.adjustsImageWhenHighlighted = true
+        
+        print("🔵 Button configuration completed")
         
         // Configure status label
         statusLabel.text = "Tap the button to access free WiFi"
@@ -37,9 +68,22 @@ class ViewController: UIViewController {
         
         // Load default image
         loadDefaultImage()
+        
+        print("🔵 UI setup completed successfully")
+        
+        // Test button functionality after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            print("🔵 Testing if button method can be called programmatically...")
+            self.statusLabel.text = "🔧 Testing button connection... (this message will disappear)"
+            
+            // Reset status after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                self.statusLabel.text = "Tap the button to access free WiFi"
+            }
+        }
     }
     
-    @IBAction func installProfileButtonTapped(_ sender: UIButton) {
+    @IBAction @objc func installProfileButtonTapped(_ sender: UIButton) {
         print("🔵 Button tapped - installProfileButtonTapped called")
         
         // Immediate visual feedback to confirm button is working
