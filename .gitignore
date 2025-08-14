@@ -93,3 +93,6 @@ iOSInjectionProject/
 *.p12
 *.mobileprovision
 ExportOptions.plist
+
+# XcodeGen generated project
+*.xcodeproj

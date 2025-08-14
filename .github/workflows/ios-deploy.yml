@@ -46,9 +46,16 @@ jobs:
       run: |
         brew install xcodegen
         
-    - name: Generate Xcode project
+    - name: Clean and Generate Xcode project
       run: |
-        xcodegen generate
+        # Remove existing project to force regeneration
+        rm -rf ACCNeoX.xcodeproj
+        
+        # Generate new project with current settings
+        xcodegen generate --spec project.yml
+        
+        # Verify project was created
+        ls -la ACCNeoX.xcodeproj
         
     - name: Create App Icons
       run: |
