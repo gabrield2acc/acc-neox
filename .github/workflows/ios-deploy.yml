@@ -42,43 +42,24 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
       
-    - name: Install XcodeGen
+    - name: Verify Xcode project exists
       run: |
-        # Install a specific version of XcodeGen that generates compatible projects
-        brew install xcodegen@2.37.0 || brew install xcodegen
+        # Skip XcodeGen generation - use the manually created project file from repo
+        echo "Using manually created Xcode project file (compatible with Xcode 15.4)"
         
-    - name: Clean and Generate Xcode project
-      run: |
-        # Show XcodeGen version
-        echo "XcodeGen version:"
-        xcodegen --version
-        
-        # Find available iOS SDK version
-        LATEST_IOS_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
-        IOS_VERSION=$(echo $LATEST_IOS_SDK | sed 's/iphoneos//')
-        echo "Available iOS SDK: $LATEST_IOS_SDK (version $IOS_VERSION)"
-        
-        # Show project.yml contents
-        echo "Project.yml contents:"
-        cat project.yml
-        
-        # Remove existing project to force regeneration
-        rm -rf ACCNeoX.xcodeproj
-        echo "Removed existing project file"
-        
-        # Generate new project with current settings and force deployment target
-        echo "Generating Xcode project with iOS $IOS_VERSION compatibility..."
-        xcodegen generate --spec project.yml --use-cache
-        
-        # Verify project was created
-        echo "Generated project contents:"
-        ls -la ACCNeoX.xcodeproj || echo "Project generation failed"
-        
-        # Show project file info if it exists
+        # Verify project exists and is readable
         if [ -d "ACCNeoX.xcodeproj" ]; then
-          echo "Project file details:"
+          echo "Project file exists:"
+          ls -la ACCNeoX.xcodeproj/
+          echo "Project file format check:"
           file ACCNeoX.xcodeproj/project.pbxproj
-          head -20 ACCNeoX.xcodeproj/project.pbxproj
+          
+          # Check if project is readable
+          echo "Testing project readability:"
+          xcodebuild -project ACCNeoX.xcodeproj -list || echo "Project read failed"
+        else
+          echo "ERROR: ACCNeoX.xcodeproj not found!"
+          exit 1
         fi
         
     - name: Create App Icons
