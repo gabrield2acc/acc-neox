@@ -200,7 +200,6 @@ class NetworkMonitor: NSObject {
         
         // Method 6: Aggressive detection for common WiFi network patterns
         let testPatterns = ["test-acloudradius", "acloudradius", "acl", "wifi", "hotspot", "guest", "free", "public", "sony", "entertainment"]
-        let ssidLower = ssid.lowercased()
         for pattern in testPatterns {
             if ssidLower.contains(pattern) {
                 print("⚠️ NetworkMonitor: Detected potential target network by pattern '\(pattern)', assuming acloudradius.net realm")
