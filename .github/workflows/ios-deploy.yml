@@ -142,8 +142,16 @@ jobs:
       run: |
         mkdir -p build
         
-        # Find the latest available iOS SDK
-        LATEST_IOS_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+        # Find an iOS SDK that's actually installed (avoid iOS 18.0 if not installed)
+        AVAILABLE_SDKS=$(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}')
+        echo "Available iOS SDKs:"
+        echo "$AVAILABLE_SDKS"
+        
+        # Try to find iOS 17.x first, fallback to latest available
+        LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos17\." | tail -1)
+        if [ -z "$LATEST_IOS_SDK" ]; then
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | head -1)
+        fi
         echo "Using iOS SDK: $LATEST_IOS_SDK"
         
         # List available destinations for debugging

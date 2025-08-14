@@ -1,4 +1,5 @@
 import UIKit
+import SafariServices
 import SystemConfiguration.CaptiveNetwork
 
 class ViewController: UIViewController {
@@ -41,48 +42,35 @@ class ViewController: UIViewController {
         
         // Visual feedback
         sender.backgroundColor = .systemGreen
-        statusLabel.text = "Opening WiFi profile page..."
+        statusLabel.text = "Opening profile page..."
         
-        // Reset button color after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            sender.backgroundColor = .systemOrange
-        }
-        
-        // Open profile URL
-        openProfileURL()
-    }
-    
-    private func openProfileURL() {
-        let urlString = "https://profiles.acloudradius.net/generate"
+        // Open the root URL (not /generate) as suggested
+        let urlString = "https://profiles.acloudradius.net/"
         
         guard let url = URL(string: urlString) else {
-            statusLabel.text = "Error: Invalid URL"
+            statusLabel.text = "Invalid URL"
+            sender.backgroundColor = .systemOrange
             return
         }
         
         print("Opening URL: \(url)")
         
-        // Try to open in Safari
-        if UIApplication.shared.canOpenURL(url) {
-            UIApplication.shared.open(url, options: [:]) { [weak self] success in
-                DispatchQueue.main.async {
-                    if success {
-                        self?.statusLabel.text = "Safari opened! Follow the steps to install the WiFi profile."
-                        print("Successfully opened URL in Safari")
-                    } else {
-                        self?.statusLabel.text = "Failed to open Safari. Please try again."
-                        print("Failed to open URL")
-                    }
-                }
-            }
-        } else {
-            statusLabel.text = "Cannot open URL - Safari not available"
-            print("Cannot open URL - Safari not available")
+        // Use SFSafariViewController as recommended by Apple
+        let safariVC = SFSafariViewController(url: url)
+        safariVC.dismissButtonStyle = .close
+        safariVC.delegate = self
+        
+        present(safariVC, animated: true) {
+            self.statusLabel.text = "Profile page opened - follow the instructions to install."
+        }
+        
+        // Reset button color after 2 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            sender.backgroundColor = .systemOrange
         }
     }
     
     private func loadDefaultImage() {
-        // Create default neoX image
         createNeoXImage()
     }
     
@@ -183,10 +171,11 @@ class ViewController: UIViewController {
                     print("Connected to SSID: \(ssid)")
                     
                     // Simple heuristic: if SSID contains certain keywords or patterns
-                    // In real implementation, you'd check NAI realm
+                    // In real implementation, you'd check NAI realm for acloudradius.net
                     if ssid.lowercased().contains("passpoint") || 
                        ssid.lowercased().contains("hotspot") ||
-                       ssid.lowercased().contains("guest") {
+                       ssid.lowercased().contains("guest") ||
+                       ssid.lowercased().contains("acloudradius") {
                         return true
                     }
                 }
@@ -198,7 +187,19 @@ class ViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        // Check network status when returning to app
+        // Check network status when returning to app (after profile installation)
         checkNetworkAndUpdateImage()
+    }
+}
+
+// MARK: - SFSafariViewControllerDelegate
+extension ViewController: SFSafariViewControllerDelegate {
+    func safariViewControllerDidFinish(_ controller: SFSafariViewController) {
+        statusLabel.text = "Safari closed. If you installed a profile, you may see the SONY branding when connected."
+        
+        // Check network status after Safari closes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.checkNetworkAndUpdateImage()
+        }
     }
 }
