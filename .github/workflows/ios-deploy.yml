@@ -12,7 +12,7 @@ env:
   
 jobs:
   build-and-deploy:
-    runs-on: macos-14
+    runs-on: macos-15
     
     steps:
     - name: Checkout code
@@ -62,7 +62,7 @@ jobs:
         
         # Generate new project with current settings
         echo "Generating Xcode project..."
-        xcodegen generate --spec project.yml --verbose
+        xcodegen generate --spec project.yml
         
         # Verify project was created
         echo "Generated project contents:"
