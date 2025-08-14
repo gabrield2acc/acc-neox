@@ -42,6 +42,19 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
       
+    - name: Install iOS platforms and simulators
+      run: |
+        echo "Installing iOS platforms for Xcode 16..."
+        # Install iOS 18.0 simulator and platforms if available
+        sudo xcodebuild -runFirstLaunch || echo "First launch already completed"
+        
+        # Download and install iOS 18.0 simulator if not present
+        xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
+        
+        # List all available platforms to verify installation
+        echo "Available platforms after installation:"
+        xcodebuild -showsdks
+      
     - name: Verify Xcode project exists
       run: |
         # Skip XcodeGen generation - use the manually created project file from repo
@@ -129,11 +142,26 @@ jobs:
         echo "Available iOS SDKs:"
         echo "$AVAILABLE_SDKS"
         
-        # Prefer iOS 18.x SDK as required by App Store, fallback to latest available
+        # Try to find the best available SDK for App Store submission
         LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos18\." | tail -1)
         if [ -z "$LATEST_IOS_SDK" ]; then
-          echo "Warning: iOS 18.x SDK not found, using latest available"
+          # Try iOS 17.x if 18.x not available
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos17\." | tail -1)
+        fi
+        if [ -z "$LATEST_IOS_SDK" ]; then
+          # Use latest available as fallback
           LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | tail -1)
+          echo "Warning: Using $LATEST_IOS_SDK - may not meet App Store requirements"
+        fi
+        
+        # Extract just the version number for validation
+        IOS_SDK_VERSION=$(echo "$LATEST_IOS_SDK" | sed 's/iphoneos//')
+        echo "Selected iOS SDK version: $IOS_SDK_VERSION"
+        
+        # Warn if SDK version might not meet App Store requirements
+        if [[ "$IOS_SDK_VERSION" < "18.0" ]]; then
+          echo "⚠️  WARNING: Using iOS SDK $IOS_SDK_VERSION which may not meet App Store submission requirements (iOS 18+ required)"
+          echo "App may build successfully but fail App Store validation"
         fi
         echo "Using iOS SDK: $LATEST_IOS_SDK"
         
@@ -141,8 +169,12 @@ jobs:
         echo "Available build destinations:"
         xcodebuild -project ACCNeoX.xcodeproj -scheme ACCNeoX -showdestinations | head -20
         
-        # Build with explicit SDK and destination
-        xcodebuild \
+        # Attempt to build with the selected SDK
+        echo "Starting build with $LATEST_IOS_SDK..."
+        BUILD_SUCCESS=false
+        
+        # Try building with the selected SDK
+        if xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
           -configuration Release \
@@ -154,7 +186,38 @@ jobs:
           CODE_SIGN_STYLE=Manual \
           ONLY_ACTIVE_ARCH=NO \
           IPHONEOS_DEPLOYMENT_TARGET=14.0 \
-          archive
+          archive; then
+          BUILD_SUCCESS=true
+          echo "✅ Build succeeded with $LATEST_IOS_SDK"
+        else
+          echo "❌ Build failed with $LATEST_IOS_SDK"
+          
+          # Try with the latest available iOS SDK as fallback
+          FALLBACK_SDK=$(xcodebuild -showsdks | grep iphoneos | tail -1 | awk '{print $NF}')
+          if [ "$FALLBACK_SDK" != "$LATEST_IOS_SDK" ]; then
+            echo "🔄 Retrying with fallback SDK: $FALLBACK_SDK"
+            
+            xcodebuild \
+              -project ACCNeoX.xcodeproj \
+              -scheme ACCNeoX \
+              -configuration Release \
+              -sdk "$FALLBACK_SDK" \
+              -archivePath $PWD/build/ACCNeoX.xcarchive \
+              PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROVISIONING_PROFILE_NAME }}" \
+              CODE_SIGN_IDENTITY="${{ secrets.CODE_SIGN_IDENTITY }}" \
+              DEVELOPMENT_TEAM="${{ secrets.DEVELOPMENT_TEAM }}" \
+              CODE_SIGN_STYLE=Manual \
+              ONLY_ACTIVE_ARCH=NO \
+              IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+              archive
+            
+            BUILD_SUCCESS=true
+            echo "✅ Build succeeded with fallback SDK $FALLBACK_SDK"
+          else
+            echo "💥 Build failed and no alternative SDK available"
+            exit 1
+          fi
+        fi
           
     - name: Export IPA
       run: |
