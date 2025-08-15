@@ -89,5 +89,19 @@
 		<string>http</string>
 		<string>https</string>
 	</array>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>systemBackground</string>
+		<key>UIImageName</key>
+		<string></string>
+		<key>UILaunchScreenMininumTime</key>
+		<real>0.5</real>
+		<key>UINavigationBar</key>
+		<dict>
+			<key>UIBarStyle</key>
+			<string>UIBarStyleDefault</string>
+		</dict>
+	</dict>
 </dict>
 </plist>
