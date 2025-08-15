@@ -13,9 +13,15 @@ struct NetworkInfo {
     let realm: String?
     let isPasspoint: Bool
     let signalStrength: Int?
+    let venueName: String? // Passpoint venue name attribute
     
     var isACLCloudRadiusRealm: Bool {
         return realm?.lowercased().contains("acloudradius.net") == true
+    }
+    
+    var hasACCVenue1: Bool {
+        // Check if venue name contains acc-venue1 (Passpoint venue attribute)
+        return venueName?.lowercased().contains("acc-venue1") == true
     }
 }
 
@@ -136,9 +142,15 @@ class NetworkMonitor: NSObject {
             let hasPasspointACLPattern = info.isPasspoint && (realmLower.contains("acloudradius") || 
                                         realmLower.contains("sony") || hasACLPattern)
             
+            // Check for acc-venue1 venue name attribute (NEW REQUIREMENT)
+            let hasACCVenue1 = info.hasACCVenue1
+            let venueNameLower = info.venueName?.lowercased() ?? ""
+            let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
+            
             // Determine if this is an ACLCloudRadius network - be more inclusive for SSID matches
             let isACLCloudRadiusNetwork = hasACLCloudRadiusRealm || hasACLCloudRadiusSSID || hasACLCloudRadiusInRealm || 
-                                        hasACLPattern || hasSONYPattern || hasPasspointACLPattern
+                                        hasACLPattern || hasSONYPattern || hasPasspointACLPattern ||
+                                        hasACCVenue1 || hasACCVenueName
             
             if isACLCloudRadiusNetwork {
                 // Track consecutive ACL detections for stability
@@ -158,6 +170,9 @@ class NetworkMonitor: NSObject {
                 print("  - ACL pattern: \(hasACLPattern)")
                 print("  - SONY pattern: \(hasSONYPattern)")
                 print("  - Passpoint ACL pattern: \(hasPasspointACLPattern)")
+                print("  - ACC-Venue1 check: \(hasACCVenue1)")
+                print("  - ACC venue name: \(hasACCVenueName)")
+                print("  - Venue name: \(info.venueName ?? "none")")
                 print("  - 🎯 TRIGGERING SONY BRANDING 🎯")
                 
                 // Create enhanced NetworkInfo with forced ACLCloudRadius realm
@@ -166,7 +181,8 @@ class NetworkMonitor: NSObject {
                     bssid: info.bssid,
                     realm: info.realm ?? targetRealm, // Use detected realm or force targetRealm
                     isPasspoint: true, // Force passpoint for ACLCloudRadius networks
-                    signalStrength: info.signalStrength
+                    signalStrength: info.signalStrength,
+                    venueName: info.venueName // Preserve venue name
                 )
                 
                 // Update branding state and cache
@@ -226,15 +242,17 @@ class NetworkMonitor: NSObject {
                 
                 let realm = extractRealmFromNetwork(interfaceInfo: interfaceInfo, ssid: ssid)
                 let isPasspoint = detectPasspointNetwork(interfaceInfo: interfaceInfo, ssid: ssid, realm: realm)
+                let venueName = extractVenueNameFromNetwork(interfaceInfo: interfaceInfo, ssid: ssid)
                 
-                print("🔍 NetworkMonitor: Detected realm: '\(realm ?? "none")', isPasspoint: \(isPasspoint)")
+                print("🔍 NetworkMonitor: Detected realm: '\(realm ?? "none")', isPasspoint: \(isPasspoint), venue: '\(venueName ?? "none")'")
                 
                 return NetworkInfo(
                     ssid: ssid,
                     bssid: bssid,
                     realm: realm,
                     isPasspoint: isPasspoint,
-                    signalStrength: nil
+                    signalStrength: nil,
+                    venueName: venueName
                 )
             } else {
                 print("🔍 NetworkMonitor: No network info available for interface \(interface)")
@@ -307,6 +325,64 @@ class NetworkMonitor: NSObject {
         }
         
         print("❌ NetworkMonitor: No realm detected for SSID: '\(ssid)'")
+        return nil
+    }
+    
+    private func extractVenueNameFromNetwork(interfaceInfo: NSDictionary, ssid: String) -> String? {
+        print("🔍 NetworkMonitor: Extracting venue name for SSID: '\(ssid)'")
+        
+        // Method 1: Check NetworkExtensionInfo for venue information
+        if let networkExtensionInfo = interfaceInfo["NetworkExtensionInfo"] as? [String: Any] {
+            print("🔍 NetworkMonitor: Checking NetworkExtensionInfo for venue name: \(networkExtensionInfo)")
+            if let venueName = networkExtensionInfo["VenueName"] as? String {
+                print("✅ NetworkMonitor: Found venue name in NetworkExtensionInfo: \(venueName)")
+                return venueName
+            }
+            if let venueInfo = networkExtensionInfo["VenueInfo"] as? String {
+                print("✅ NetworkMonitor: Found venue info in NetworkExtensionInfo: \(venueInfo)")
+                return venueInfo
+            }
+        }
+        
+        // Method 2: Check PasspointInfo for venue information
+        if let passpointInfo = interfaceInfo["PasspointInfo"] as? [String: Any] {
+            print("🔍 NetworkMonitor: Checking PasspointInfo for venue name: \(passpointInfo)")
+            if let venueName = passpointInfo["VenueName"] as? String {
+                print("✅ NetworkMonitor: Found venue name in PasspointInfo: \(venueName)")
+                return venueName
+            }
+            if let venueGroup = passpointInfo["VenueGroup"] as? String {
+                print("✅ NetworkMonitor: Found venue group in PasspointInfo: \(venueGroup)")
+                return venueGroup
+            }
+            if let venueType = passpointInfo["VenueType"] as? String {
+                print("✅ NetworkMonitor: Found venue type in PasspointInfo: \(venueType)")
+                return venueType
+            }
+        }
+        
+        // Method 3: Check for other possible keys containing venue info
+        let possibleVenueKeys = ["venue", "Venue", "VenueName", "venue_name", "VenueInfo", "venue_info", 
+                                "VenueGroup", "venue_group", "VenueType", "venue_type"]
+        for key in possibleVenueKeys {
+            if let venueValue = interfaceInfo[key] as? String {
+                print("✅ NetworkMonitor: Found venue with key '\(key)': \(venueValue)")
+                return venueValue
+            }
+        }
+        
+        // Method 4: Check for acc-venue1 pattern in any string values (comprehensive search)
+        for key in interfaceInfo.allKeys {
+            if let stringValue = interfaceInfo[key] as? String {
+                let lowerValue = stringValue.lowercased()
+                if lowerValue.contains("acc-venue1") || lowerValue.contains("acc venue1") {
+                    print("✅ NetworkMonitor: Found acc-venue1 pattern in key '\(key)': \(stringValue)")
+                    return stringValue
+                }
+            }
+        }
+        
+        print("❌ NetworkMonitor: No venue name detected for SSID: '\(ssid)'")
         return nil
     }
     
@@ -408,7 +484,8 @@ class NetworkMonitor: NSObject {
                     bssid: networkInfo.bssid,
                     realm: targetRealm,
                     isPasspoint: true,
-                    signalStrength: networkInfo.signalStrength
+                    signalStrength: networkInfo.signalStrength,
+                    venueName: networkInfo.venueName
                 )
                 
                 // Notify delegate immediately
@@ -431,7 +508,8 @@ class NetworkMonitor: NSObject {
                 bssid: nil,
                 realm: targetRealm,
                 isPasspoint: true,
-                signalStrength: nil
+                signalStrength: nil,
+                venueName: nil
             )
             delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
         } else {
@@ -440,25 +518,28 @@ class NetworkMonitor: NSObject {
                 bssid: nil,
                 realm: nil,
                 isPasspoint: false,
-                signalStrength: nil
+                signalStrength: nil,
+                venueName: nil
             )
             delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: testNetworkInfo)
         }
     }
     
     // Test method to simulate various network types for debugging
-    func simulateNetworkConnection(ssid: String, realm: String? = nil, isPasspoint: Bool = false) {
+    func simulateNetworkConnection(ssid: String, realm: String? = nil, isPasspoint: Bool = false, venueName: String? = nil) {
         print("🧪 NetworkMonitor: Simulating network connection")
         print("  - SSID: \(ssid)")
         print("  - Realm: \(realm ?? "none")")
         print("  - Passpoint: \(isPasspoint)")
+        print("  - Venue: \(venueName ?? "none")")
         
         let testNetworkInfo = NetworkInfo(
             ssid: ssid,
             bssid: nil,
             realm: realm,
             isPasspoint: isPasspoint,
-            signalStrength: nil
+            signalStrength: nil,
+            venueName: venueName
         )
         
         // Use the same logic as checkCurrentNetwork to determine if this should show SONY or neoX
@@ -488,10 +569,28 @@ class NetworkMonitor: NSObject {
             bssid: nil,
             realm: "acloudradius.net",
             isPasspoint: true,
-            signalStrength: nil
+            signalStrength: nil,
+            venueName: nil
         )
         
         print("🧪 This should DEFINITELY trigger SONY branding")
+        delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
+    }
+    
+    // Test specifically for acc-venue1 venue name detection (NEW REQUIREMENT)
+    func testACCVenue1Detection(ssid: String = "Test-Venue-Network") {
+        print("🧪 NetworkMonitor: Testing acc-venue1 venue name detection")
+        
+        let testNetworkInfo = NetworkInfo(
+            ssid: ssid,
+            bssid: nil,
+            realm: nil,
+            isPasspoint: true,
+            signalStrength: nil,
+            venueName: "acc-venue1"
+        )
+        
+        print("🧪 This should trigger SONY branding via venue name acc-venue1")
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
     }
     
