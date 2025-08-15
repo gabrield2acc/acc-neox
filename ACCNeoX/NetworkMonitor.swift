@@ -207,13 +207,8 @@ class NetworkMonitor: NSObject {
             let hasPasspointACLPattern = info.isPasspoint && (realmLower.contains("acloudradius") || 
                                         realmLower.contains("sony") || hasACLPattern)
             
-            // Check for acc-venue1 venue name attribute (PRIMARY REQUIREMENT)
-            let hasACCVenue1 = info.hasACCVenue1
-            let venueNameLower = info.venueName?.lowercased() ?? ""
-            let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
-            
             // Priority check: acc-venue1 detection is primary trigger
-            if hasACCVenue1 || hasACCVenueName {
+            if isACCVenue1Network {
                 print("🎯 PRIMARY TRIGGER: acc-venue1 venue detected!")
                 print("  - Venue name: \(info.venueName ?? "inferred")")
                 print("  - hasACCVenue1: \(hasACCVenue1)")
@@ -222,8 +217,7 @@ class NetworkMonitor: NSObject {
             
             // Determine if this is an ACLCloudRadius network - be more inclusive for SSID matches
             let isACLCloudRadiusNetwork = hasACLCloudRadiusRealm || hasACLCloudRadiusSSID || hasACLCloudRadiusInRealm || 
-                                        hasACLPattern || hasSONYPattern || hasPasspointACLPattern ||
-                                        hasACCVenue1 || hasACCVenueName
+                                        hasACLPattern || hasSONYPattern || hasPasspointACLPattern || isACCVenue1Network
             
             if isACLCloudRadiusNetwork {
                 // Track consecutive ACL detections for stability
@@ -243,8 +237,7 @@ class NetworkMonitor: NSObject {
                 print("  - ACL pattern: \(hasACLPattern)")
                 print("  - SONY pattern: \(hasSONYPattern)")
                 print("  - Passpoint ACL pattern: \(hasPasspointACLPattern)")
-                print("  - ACC-Venue1 check: \(hasACCVenue1)")
-                print("  - ACC venue name: \(hasACCVenueName)")
+                print("  - ACC-Venue1 check: \(isACCVenue1Network)")
                 print("  - Venue name: \(info.venueName ?? "none")")
                 print("  - 🎯 TRIGGERING SONY BRANDING 🎯")
                 
