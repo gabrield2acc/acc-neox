@@ -38,6 +38,8 @@ class NetworkMonitor: NSObject {
     private var consecutiveACLDetections = 0 // Count consecutive detections for stability
     private var currentBrandingState: Bool = false // Track current branding (true = SONY, false = neoX)
     private var lastNetworkInfo: NetworkInfo? // Cache last network info to avoid unnecessary updates
+    private var isLockedToSONY: Bool = false // Track if SONY branding is locked due to acc-venue1
+    private var accVenue1NetworkDetected: Bool = false // Track if acc-venue1 was ever detected
     
     private override init() {
         super.init()
@@ -115,6 +117,55 @@ class NetworkMonitor: NSObject {
         let networkInfo = getCurrentNetworkInfo()
         
         if let info = networkInfo {
+            // Check for acc-venue1 venue name immediately
+            let hasACCVenue1 = info.hasACCVenue1
+            let venueNameLower = info.venueName?.lowercased() ?? ""
+            let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
+            let isACCVenue1Network = hasACCVenue1 || hasACCVenueName
+            
+            // If acc-venue1 detected, lock to SONY branding
+            if isACCVenue1Network {
+                if !isLockedToSONY {
+                    print("🔒 NetworkMonitor: LOCKING to SONY branding due to acc-venue1 detection!")
+                    isLockedToSONY = true
+                    accVenue1NetworkDetected = true
+                }
+            }
+            
+            // If locked to SONY, check if we should stay locked or unlock
+            if isLockedToSONY {
+                print("🔒 NetworkMonitor: SONY branding LOCKED - checking current network")
+                print("  - Current SSID: \(info.ssid)")
+                print("  - Current venue: \(info.venueName ?? "none")")
+                print("  - acc-venue1 detected in current network: \(isACCVenue1Network)")
+                
+                // If current network doesn't have acc-venue1, unlock from SONY
+                if !isACCVenue1Network {
+                    print("🔓 NetworkMonitor: Current network doesn't have acc-venue1 - UNLOCKING from SONY branding")
+                    isLockedToSONY = false
+                    accVenue1NetworkDetected = false
+                    print("🔓 NetworkMonitor: UNLOCKED from SONY branding - switched to non-acc-venue1 network")
+                } else {
+                    print("🔒 NetworkMonitor: Still connected to acc-venue1 network - maintaining SONY lock")
+                    
+                    // Always show SONY when locked to acc-venue1
+                    currentBrandingState = true
+                    lastNetworkInfo = info
+                    
+                    let enhancedInfo = NetworkInfo(
+                        ssid: info.ssid,
+                        bssid: info.bssid,
+                        realm: info.realm ?? targetRealm,
+                        isPasspoint: true,
+                        signalStrength: info.signalStrength,
+                        venueName: info.venueName ?? "acc-venue1"
+                    )
+                    
+                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: enhancedInfo)
+                    return
+                }
+            }
+            
             // Check if network info has actually changed to avoid unnecessary UI updates
             let networkChanged = hasNetworkChanged(current: info, previous: lastNetworkInfo)
             
@@ -124,13 +175,6 @@ class NetworkMonitor: NSObject {
                 print("  - Current SSID: \(info.ssid)")
                 print("  - Current venue: \(info.venueName ?? "none")")
                 print("  - Branding state: \(currentBrandingState ? "SONY" : "neoX")")
-                print("  - acc-venue1 detected: \(info.hasACCVenue1)")
-                
-                // Force delegate update to ensure UI stays on SONY when acc-venue1 is present
-                if info.hasACCVenue1 || (info.venueName?.lowercased().contains("acc-venue1") == true) {
-                    print("🔍 NetworkMonitor: Ensuring SONY persistence for acc-venue1")
-                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: info)
-                }
                 return
             }
             
@@ -235,6 +279,19 @@ class NetworkMonitor: NSObject {
                 delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: info)
             }
         } else {
+            // No network detected - check if we should unlock from SONY branding
+            if isLockedToSONY {
+                print("🔒 NetworkMonitor: No network detected while locked to SONY")
+                print("  - Checking if we should unlock from SONY branding...")
+                print("  - Device is now disconnected from WiFi")
+                print("  - Unlocking from SONY branding and switching to neoX")
+                
+                // Unlock from SONY branding when completely disconnected from WiFi
+                isLockedToSONY = false
+                accVenue1NetworkDetected = false
+                print("🔓 NetworkMonitor: UNLOCKED from SONY branding - device disconnected from WiFi")
+            }
+            
             // Update branding state and cache
             currentBrandingState = false // neoX branding
             lastNetworkInfo = nil
