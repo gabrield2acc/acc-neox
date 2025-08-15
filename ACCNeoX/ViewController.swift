@@ -108,10 +108,16 @@ class ViewController: UIViewController {
         quadTapGesture.numberOfTapsRequired = 4
         advertisementImageView.addGestureRecognizer(quadTapGesture)
         
+        // Five tap to test exact acloudradius.net SSID
+        let fiveTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugFiveTapped))
+        fiveTapGesture.numberOfTapsRequired = 5
+        advertisementImageView.addGestureRecognizer(fiveTapGesture)
+        
         print("🧪 Debug gestures enabled:")
         print("  - Double tap image: Force switch to SONY branding")
         print("  - Triple tap image: Force switch to neoX branding") 
         print("  - Quad tap image: Simulate ACLCloudRadius network")
+        print("  - Five tap image: Test exact acloudradius.net SSID")
         print("  - Long press status: Cycle through network simulations")
     }
     
@@ -134,6 +140,15 @@ class ViewController: UIViewController {
         }
     }
     
+    @objc private func debugFiveTapped() {
+        print("🧪 DEBUG: Five tap detected - testing exact acloudradius.net SSID")
+        networkMonitor.testACLCloudRadiusSSID(ssid: "acloudradius.net")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.statusLabel.text = "🧪 Debug: Testing acloudradius.net SSID - should show SONY!"
+        }
+    }
+    
     private var debugNetworkIndex = 0
     
     @objc private func debugLongPressed(gesture: UILongPressGestureRecognizer) {
@@ -142,10 +157,13 @@ class ViewController: UIViewController {
             
             let testNetworks = [
                 ("HomeWiFi", nil, false),                                    // Should show neoX
-                ("Test-ACLCloudRadius-Network", "acloudradius.net", true),   // Should show SONY
+                ("acloudradius.net", "acloudradius.net", true),              // Should show SONY - exact SSID
+                ("Test-ACLCloudRadius-Network", "acloudradius.net", true),   // Should show SONY  
+                ("ACLCloudRadius-WiFi", "acloudradius.net", true),           // Should show SONY
                 ("SONY-Guest", "acloudradius.net", true),                    // Should show SONY
+                ("ACL-Cloud-WiFi", nil, false),                             // Should show SONY - pattern match
+                ("CloudRadius-Hotspot", nil, true),                         // Should show SONY - pattern match
                 ("Public-WiFi", nil, false),                                 // Should show neoX
-                ("ACL-Hotspot", "acloudradius.net", false),                  // Should show SONY
                 ("Regular-Passpoint", "other.realm.com", true)               // Should show neoX
             ]
             
