@@ -62,9 +62,23 @@ jobs:
         sudo xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
         sudo xcodebuild -downloadPlatform iOSSimulator || echo "iOS Simulator download failed or already installed"
         
-        # Install runtime components for iOS 18.0
+        # Install runtime components for iOS 18.0 with specific version matching
         echo "Installing iOS 18.0 runtime components..."
+        
+        # Try multiple approaches to install matching iOS 18.0 simulator runtime
         sudo xcrun simctl runtime add iOS || echo "Runtime add failed or already installed"
+        
+        # Install specific iOS 18.0 runtime that matches SDK version 22A3362
+        echo "Attempting to install specific iOS 18.0 runtime..."
+        sudo xcrun simctl runtime add com.apple.CoreSimulator.SimRuntime.iOS-18-0 || echo "Specific iOS 18.0 runtime install failed"
+        
+        # List available runtimes to see what we have
+        echo "Available simulator runtimes:"
+        xcrun simctl runtime list
+        
+        # Try to download and install iOS 18.0 runtime if not available
+        echo "Attempting to download iOS 18.0 runtime..."
+        sudo xcrun simctl runtime add iOS --verbose || echo "Runtime download failed"
         
         # Install additional iOS versions as fallbacks
         echo "Installing fallback iOS platforms..."
@@ -257,7 +271,7 @@ jobs:
           echo "⚠️  No iOS device destinations available - using generic destination"
         fi
         
-        # Enhanced build command with storyboard compatibility settings
+        # Enhanced build command with asset catalog simulator runtime fix
         BUILD_CMD="xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
@@ -271,7 +285,8 @@ jobs:
           ONLY_ACTIVE_ARCH=NO \
           IPHONEOS_DEPLOYMENT_TARGET=14.0 \
           SKIP_INSTALL=NO \
-          BUILD_LIBRARY_FOR_DISTRIBUTION=NO"
+          BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
+          TARGETED_DEVICE_FAMILY=1"
         
         # Always add destination parameter for iOS device builds
         BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
@@ -293,7 +308,7 @@ jobs:
             if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
               echo "🔄 Trying fallback SDK: $SDK"
               
-              # Build fallback command with enhanced storyboard settings
+              # Build fallback command with iPhone-only target to avoid simulator runtime issues
               FALLBACK_BUILD_CMD="xcodebuild \
                 -project ACCNeoX.xcodeproj \
                 -scheme ACCNeoX \
@@ -307,7 +322,8 @@ jobs:
                 ONLY_ACTIVE_ARCH=NO \
                 IPHONEOS_DEPLOYMENT_TARGET=14.0 \
                 SKIP_INSTALL=NO \
-                BUILD_LIBRARY_FOR_DISTRIBUTION=NO"
+                BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
+                TARGETED_DEVICE_FAMILY=1"
               
               # Always add destination parameter for iOS device builds  
               FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
