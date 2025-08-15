@@ -30,6 +30,8 @@ class NetworkMonitor: NSObject {
     private let targetRealm = "acloudradius.net"
     private var lastDetectedACLNetwork: String? // Track last ACL network to maintain state
     private var consecutiveACLDetections = 0 // Count consecutive detections for stability
+    private var currentBrandingState: Bool = false // Track current branding (true = SONY, false = neoX)
+    private var lastNetworkInfo: NetworkInfo? // Cache last network info to avoid unnecessary updates
     
     private override init() {
         super.init()
@@ -49,9 +51,19 @@ class NetworkMonitor: NSObject {
         
         requestLocationPermissionIfNeeded()
         
-        // Start with more frequent checks for faster detection
-        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        // Start with more frequent checks for faster detection, then reduce frequency for stability
+        var checkInterval: TimeInterval = 1.0
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: checkInterval, repeats: true) { [weak self] timer in
             self?.checkCurrentNetwork()
+            
+            // After 30 seconds, reduce frequency to preserve battery and improve stability  
+            if timer.timeInterval == 1.0 && Date().timeIntervalSince(timer.fireDate.addingTimeInterval(-30)) > 0 {
+                timer.invalidate()
+                self?.monitoringTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+                    self?.checkCurrentNetwork()
+                }
+                print("🔍 NetworkMonitor: Reduced monitoring frequency to 3 seconds for stability")
+            }
         }
         
         // Force immediate check when monitoring starts
@@ -88,6 +100,15 @@ class NetworkMonitor: NSObject {
         let networkInfo = getCurrentNetworkInfo()
         
         if let info = networkInfo {
+            // Check if network info has actually changed to avoid unnecessary UI updates
+            let networkChanged = hasNetworkChanged(current: info, previous: lastNetworkInfo)
+            
+            if !networkChanged && currentBrandingState {
+                // If connected to ACL network and nothing changed, maintain SONY branding
+                print("🔍 NetworkMonitor: Network unchanged, maintaining current SONY branding")
+                return
+            }
+            
             print("🔍 NetworkMonitor: Current network - SSID: \(info.ssid), Realm: \(info.realm ?? "unknown"), Passpoint: \(info.isPasspoint)")
             
             // Enhanced ACLCloudRadius detection - more aggressive SSID-based detection
@@ -148,6 +169,10 @@ class NetworkMonitor: NSObject {
                     signalStrength: info.signalStrength
                 )
                 
+                // Update branding state and cache
+                currentBrandingState = true // SONY branding
+                lastNetworkInfo = enhancedInfo
+                
                 // Always trigger SONY branding for ACL networks - be aggressive
                 delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: enhancedInfo)
             } else {
@@ -155,12 +180,20 @@ class NetworkMonitor: NSObject {
                 lastDetectedACLNetwork = nil
                 consecutiveACLDetections = 0
                 
+                // Update branding state and cache
+                currentBrandingState = false // neoX branding
+                lastNetworkInfo = info
+                
                 print("🔍 NetworkMonitor: NOT an ACLCloudRadius network")
                 print("  - SSID: \(info.ssid)")
                 print("  - 📱 TRIGGERING neoX BRANDING 📱")
                 delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: info)
             }
         } else {
+            // Update branding state and cache
+            currentBrandingState = false // neoX branding
+            lastNetworkInfo = nil
+            
             print("🔍 NetworkMonitor: No WiFi network detected - showing neoX branding")
             delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: nil)
         }
@@ -460,6 +493,29 @@ class NetworkMonitor: NSObject {
         
         print("🧪 This should DEFINITELY trigger SONY branding")
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
+    }
+    
+    // Helper function to check if network info has changed significantly
+    private func hasNetworkChanged(current: NetworkInfo, previous: NetworkInfo?) -> Bool {
+        guard let previous = previous else {
+            return true // No previous info, consider it changed
+        }
+        
+        // Compare key network attributes
+        let ssidChanged = current.ssid != previous.ssid
+        let realmChanged = current.realm != previous.realm
+        let passpointChanged = current.isPasspoint != previous.isPasspoint
+        
+        let hasChanged = ssidChanged || realmChanged || passpointChanged
+        
+        if hasChanged {
+            print("🔍 NetworkMonitor: Network change detected:")
+            print("  - SSID: \(previous.ssid) → \(current.ssid) (changed: \(ssidChanged))")
+            print("  - Realm: \(previous.realm ?? "none") → \(current.realm ?? "none") (changed: \(realmChanged))")
+            print("  - Passpoint: \(previous.isPasspoint) → \(current.isPasspoint) (changed: \(passpointChanged))")
+        }
+        
+        return hasChanged
     }
     
     deinit {
