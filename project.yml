@@ -10,7 +10,7 @@ options:
 
 settings:
   MARKETING_VERSION: 1.1.4
-  CURRENT_PROJECT_VERSION: 45
+  CURRENT_PROJECT_VERSION: 46
 
 targets:
   ACCNeoX:
