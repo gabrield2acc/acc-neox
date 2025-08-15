@@ -47,10 +47,18 @@ class NetworkMonitor: NSObject {
         
         requestLocationPermissionIfNeeded()
         
-        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+        // Start with more frequent checks for faster detection
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             self?.checkCurrentNetwork()
         }
         
+        // Force immediate check when monitoring starts
+        print("🔍 NetworkMonitor: Performing immediate network check on startup...")
+        checkCurrentNetwork()
+    }
+    
+    func forceNetworkCheck() {
+        print("🔍 NetworkMonitor: Force network check requested")
         checkCurrentNetwork()
     }
     
@@ -80,22 +88,53 @@ class NetworkMonitor: NSObject {
         if let info = networkInfo {
             print("🔍 NetworkMonitor: Current network - SSID: \(info.ssid), Realm: \(info.realm ?? "unknown"), Passpoint: \(info.isPasspoint)")
             
-            // Direct SSID-based detection for Test-ACLCloudRadius-Network and similar
+            // Enhanced ACLCloudRadius detection - check multiple patterns
             let ssidLower = info.ssid.lowercased()
-            let isACLCloudRadiusNetwork = ssidLower.contains("acloudradius") || ssidLower.contains("test-acloudradius")
+            let realmLower = info.realm?.lowercased() ?? ""
             
-            if info.isACLCloudRadiusRealm || isACLCloudRadiusNetwork {
-                print("✅ NetworkMonitor: Connected to ACLCloudRadius network! SSID: \(info.ssid)")
-                delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: info)
-            } else if info.isPasspoint {
-                print("🔍 NetworkMonitor: Connected to passpoint network but not acloudradius.net realm")
-                delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: info)
+            // Primary detection methods
+            let hasACLCloudRadiusRealm = info.isACLCloudRadiusRealm
+            let hasACLCloudRadiusSSID = ssidLower.contains("acloudradius") || ssidLower.contains("test-acloudradius")
+            let hasACLCloudRadiusInRealm = realmLower.contains("acloudradius")
+            
+            // Conservative secondary patterns - only very specific indicators
+            let hasSONYPattern = ssidLower.contains("sony") && (info.isPasspoint || realmLower.contains("acloudradius"))
+            let hasSpecificACLPattern = (ssidLower.contains("acl") || ssidLower.contains("passpoint")) && 
+                                       (realmLower.contains("acloudradius") || realmLower.contains("sony"))
+            
+            // Determine if this is an ACLCloudRadius network - be conservative to avoid false positives
+            // Only trigger SONY branding when we're confident it's an ACLCloudRadius network
+            let isACLCloudRadiusNetwork = hasACLCloudRadiusRealm || hasACLCloudRadiusSSID || hasACLCloudRadiusInRealm || 
+                                        hasSONYPattern || hasSpecificACLPattern
+            
+            if isACLCloudRadiusNetwork {
+                print("✅ NetworkMonitor: DETECTED ACLCloudRadius network!")
+                print("  - SSID: \(info.ssid)")
+                print("  - Realm: \(info.realm ?? "none")")
+                print("  - Realm check: \(hasACLCloudRadiusRealm)")
+                print("  - SSID check: \(hasACLCloudRadiusSSID)")
+                print("  - Realm contains ACL: \(hasACLCloudRadiusInRealm)")
+                print("  - SONY pattern: \(hasSONYPattern)")
+                print("  - Specific ACL pattern: \(hasSpecificACLPattern)")
+                
+                // Create enhanced NetworkInfo with forced ACLCloudRadius realm if needed
+                let enhancedInfo = NetworkInfo(
+                    ssid: info.ssid,
+                    bssid: info.bssid,
+                    realm: info.realm ?? targetRealm, // Use detected realm or force targetRealm
+                    isPasspoint: true, // Force passpoint for ACLCloudRadius networks
+                    signalStrength: info.signalStrength
+                )
+                
+                delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: enhancedInfo)
             } else {
-                print("🔍 NetworkMonitor: Connected to regular WiFi network")
+                print("🔍 NetworkMonitor: NOT an ACLCloudRadius network")
+                print("  - SSID: \(info.ssid)")
+                print("  - Will show neoX branding")
                 delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: info)
             }
         } else {
-            print("🔍 NetworkMonitor: No WiFi network detected")
+            print("🔍 NetworkMonitor: No WiFi network detected - showing neoX branding")
             delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: nil)
         }
     }
@@ -345,6 +384,39 @@ class NetworkMonitor: NSObject {
             )
             delegate?.networkStatusChanged(isPasspointConnected: false, networkInfo: testNetworkInfo)
         }
+    }
+    
+    // Test method to simulate various network types for debugging
+    func simulateNetworkConnection(ssid: String, realm: String? = nil, isPasspoint: Bool = false) {
+        print("🧪 NetworkMonitor: Simulating network connection")
+        print("  - SSID: \(ssid)")
+        print("  - Realm: \(realm ?? "none")")
+        print("  - Passpoint: \(isPasspoint)")
+        
+        let testNetworkInfo = NetworkInfo(
+            ssid: ssid,
+            bssid: nil,
+            realm: realm,
+            isPasspoint: isPasspoint,
+            signalStrength: nil
+        )
+        
+        // Use the same logic as checkCurrentNetwork to determine if this should show SONY or neoX
+        let ssidLower = ssid.lowercased()
+        let realmLower = realm?.lowercased() ?? ""
+        
+        let hasACLCloudRadiusRealm = realm?.lowercased().contains("acloudradius.net") == true
+        let hasACLCloudRadiusSSID = ssidLower.contains("acloudradius") || ssidLower.contains("test-acloudradius")
+        let hasACLCloudRadiusInRealm = realmLower.contains("acloudradius")
+        let hasSONYPattern = ssidLower.contains("sony") && (isPasspoint || realmLower.contains("acloudradius"))
+        let hasSpecificACLPattern = (ssidLower.contains("acl") || ssidLower.contains("passpoint")) && 
+                                   (realmLower.contains("acloudradius") || realmLower.contains("sony"))
+        
+        let isACLCloudRadiusNetwork = hasACLCloudRadiusRealm || hasACLCloudRadiusSSID || hasACLCloudRadiusInRealm || 
+                                    hasSONYPattern || hasSpecificACLPattern
+        
+        print("🧪 Simulation result: \(isACLCloudRadiusNetwork ? "SONY" : "neoX") branding")
+        delegate?.networkStatusChanged(isPasspointConnected: isACLCloudRadiusNetwork, networkInfo: testNetworkInfo)
     }
     
     deinit {

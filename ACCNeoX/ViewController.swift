@@ -97,16 +97,22 @@ class ViewController: UIViewController {
         tripleTapGesture.numberOfTapsRequired = 3
         advertisementImageView.addGestureRecognizer(tripleTapGesture)
         
-        // Long press on status label to force network detection
+        // Long press on status label to cycle through network simulations
         let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(debugLongPressed))
         longPressGesture.minimumPressDuration = 2.0
         statusLabel.addGestureRecognizer(longPressGesture)
         statusLabel.isUserInteractionEnabled = true
         
+        // Quad tap to simulate ACLCloudRadius network
+        let quadTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugQuadTapped))
+        quadTapGesture.numberOfTapsRequired = 4
+        advertisementImageView.addGestureRecognizer(quadTapGesture)
+        
         print("🧪 Debug gestures enabled:")
         print("  - Double tap image: Force switch to SONY branding")
         print("  - Triple tap image: Force switch to neoX branding") 
-        print("  - Long press status: Force network detection")
+        print("  - Quad tap image: Simulate ACLCloudRadius network")
+        print("  - Long press status: Cycle through network simulations")
     }
     
     @objc private func debugDoubleTapped() {
@@ -119,17 +125,38 @@ class ViewController: UIViewController {
         networkMonitor.testUISwitch(toSONY: false)
     }
     
+    @objc private func debugQuadTapped() {
+        print("🧪 DEBUG: Quad tap detected - simulating ACLCloudRadius network")
+        networkMonitor.simulateNetworkConnection(ssid: "Test-ACLCloudRadius-WiFi", realm: "acloudradius.net", isPasspoint: true)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.statusLabel.text = "🧪 Debug: Simulated ACLCloudRadius network"
+        }
+    }
+    
+    private var debugNetworkIndex = 0
+    
     @objc private func debugLongPressed(gesture: UILongPressGestureRecognizer) {
         if gesture.state == .began {
-            print("🧪 DEBUG: Long press detected - forcing network detection")
-            let detected = networkMonitor.forceDetectACLCloudRadiusRealm()
+            print("🧪 DEBUG: Long press detected - cycling through network simulations")
+            
+            let testNetworks = [
+                ("HomeWiFi", nil, false),                                    // Should show neoX
+                ("Test-ACLCloudRadius-Network", "acloudradius.net", true),   // Should show SONY
+                ("SONY-Guest", "acloudradius.net", true),                    // Should show SONY
+                ("Public-WiFi", nil, false),                                 // Should show neoX
+                ("ACL-Hotspot", "acloudradius.net", false),                  // Should show SONY
+                ("Regular-Passpoint", "other.realm.com", true)               // Should show neoX
+            ]
+            
+            let (ssid, realm, isPasspoint) = testNetworks[debugNetworkIndex % testNetworks.count]
+            debugNetworkIndex += 1
+            
+            print("🧪 Testing network: \(ssid)")
+            networkMonitor.simulateNetworkConnection(ssid: ssid, realm: realm, isPasspoint: isPasspoint)
             
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if detected {
-                    self.statusLabel.text = "🧪 Debug: Forced ACLCloudRadius detection!"
-                } else {
-                    self.statusLabel.text = "🧪 Debug: Force detection failed"
-                }
+                self.statusLabel.text = "🧪 Debug: Testing \(ssid)"
             }
         }
     }
@@ -323,8 +350,19 @@ class ViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         
-        // Network status will be updated automatically via NetworkMonitor delegate
-        print("🔵 ViewController appearing - network monitoring is active")
+        // Force an immediate network check when view appears
+        print("🔵 ViewController appearing - forcing immediate network check")
+        networkMonitor.forceNetworkCheck()
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        
+        // Force another check after view fully appears to catch any network changes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            print("🔵 ViewController fully appeared - additional network check")
+            self.networkMonitor.forceNetworkCheck()
+        }
     }
 }
 
@@ -337,8 +375,13 @@ extension ViewController: NetworkMonitorDelegate {
         print("  - Network Realm: \(networkInfo?.realm ?? "None")")
         print("  - Is ACLCloudRadius Realm: \(networkInfo?.isACLCloudRadiusRealm ?? false)")
         
-        let isACLCloudRadiusConnected = networkInfo?.isACLCloudRadiusRealm == true
-        print("🔍 ViewController: Will update UI - ACLCloudRadius connected: \(isACLCloudRadiusConnected)")
+        // Trust the NetworkMonitor's enhanced detection
+        // isPasspointConnected=true now means "connected to ACLCloudRadius network"
+        let isACLCloudRadiusConnected = isPasspointConnected
+        
+        print("🔍 ViewController: Final determination - ACLCloudRadius connected: \(isACLCloudRadiusConnected)")
+        print("  - NetworkMonitor determined isPasspointConnected: \(isPasspointConnected)")
+        print("  - This will show: \(isACLCloudRadiusConnected ? "SONY" : "neoX") branding")
         
         updateUIForNetworkStatus(isACLCloudRadiusConnected: isACLCloudRadiusConnected, networkInfo: networkInfo)
     }
