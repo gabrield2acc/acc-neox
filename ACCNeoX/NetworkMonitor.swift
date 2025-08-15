@@ -79,6 +79,10 @@ class NetworkMonitor: NSObject {
     
     func forceNetworkCheck() {
         print("🔍 NetworkMonitor: Force network check requested")
+        // Reset state to ensure fresh detection
+        currentBrandingState = false
+        lastNetworkInfo = nil
+        print("🔍 NetworkMonitor: Reset branding state for fresh detection")
         checkCurrentNetwork()
     }
     
@@ -112,10 +116,15 @@ class NetworkMonitor: NSObject {
             if !networkChanged && currentBrandingState {
                 // If connected to ACL network and nothing changed, maintain SONY branding
                 print("🔍 NetworkMonitor: Network unchanged, maintaining current SONY branding")
+                print("  - Current SSID: \(info.ssid)")
+                print("  - Current venue: \(info.venueName ?? "none")")
+                print("  - Branding state: \(currentBrandingState ? "SONY" : "neoX")")
                 return
             }
             
-            print("🔍 NetworkMonitor: Current network - SSID: \(info.ssid), Realm: \(info.realm ?? "unknown"), Passpoint: \(info.isPasspoint)")
+            print("🔍 NetworkMonitor: Current network - SSID: \(info.ssid), Realm: \(info.realm ?? "unknown"), Passpoint: \(info.isPasspoint), Venue: \(info.venueName ?? "unknown")")
+            print("🔍 NetworkMonitor: Previous branding state: \(currentBrandingState ? "SONY" : "neoX")")
+            print("🔍 NetworkMonitor: Network changed: \(networkChanged)")
             
             // Enhanced ACLCloudRadius detection - more aggressive SSID-based detection
             let ssidLower = info.ssid.lowercased()
@@ -342,6 +351,14 @@ class NetworkMonitor: NSObject {
                 print("✅ NetworkMonitor: Found venue info in NetworkExtensionInfo: \(venueInfo)")
                 return venueInfo
             }
+            // Check nested objects for venue information
+            for (key, value) in networkExtensionInfo {
+                if let stringValue = value as? String, 
+                   (key.lowercased().contains("venue") || stringValue.lowercased().contains("acc-venue1")) {
+                    print("✅ NetworkMonitor: Found venue-related info in '\(key)': \(stringValue)")
+                    return stringValue
+                }
+            }
         }
         
         // Method 2: Check PasspointInfo for venue information
@@ -380,6 +397,21 @@ class NetworkMonitor: NSObject {
                     return stringValue
                 }
             }
+        }
+        
+        // Method 5: SSID-based venue inference (since iOS may not expose venue name directly)
+        let ssidLower = ssid.lowercased()
+        if ssidLower.contains("acc-venue") || ssidLower.contains("venue1") || 
+           ssidLower.contains("acc venue") || ssidLower.contains("accvenue") {
+            print("✅ NetworkMonitor: Inferred acc-venue1 from SSID pattern: \(ssid)")
+            return "acc-venue1"
+        }
+        
+        // Method 6: Check if connected to known ACC networks and assume acc-venue1
+        if ssidLower.contains("acloudradius") || ssidLower.contains("test-acloudradius") ||
+           ssidLower.contains("acl") && (ssidLower.contains("cloud") || ssidLower.contains("radius")) {
+            print("✅ NetworkMonitor: Inferring acc-venue1 for known ACLCloudRadius network: \(ssid)")
+            return "acc-venue1"
         }
         
         print("❌ NetworkMonitor: No venue name detected for SSID: '\(ssid)'")
@@ -592,6 +624,25 @@ class NetworkMonitor: NSObject {
         
         print("🧪 This should trigger SONY branding via venue name acc-venue1")
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
+    }
+    
+    // Debug method to force immediate network detection with state reset
+    func debugForceNetworkDetection() {
+        print("🧪 NetworkMonitor: DEBUG - Force immediate network detection with full state reset")
+        
+        // Stop and restart monitoring
+        stopMonitoring()
+        
+        // Reset all state
+        currentBrandingState = false
+        lastNetworkInfo = nil
+        lastDetectedACLNetwork = nil
+        consecutiveACLDetections = 0
+        
+        // Restart monitoring
+        startMonitoring()
+        
+        print("🧪 NetworkMonitor: Full monitoring restart completed")
     }
     
     // Helper function to check if network info has changed significantly

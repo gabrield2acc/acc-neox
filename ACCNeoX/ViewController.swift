@@ -141,11 +141,23 @@ class ViewController: UIViewController {
         fiveTapGesture.numberOfTapsRequired = 5
         advertisementImageView.addGestureRecognizer(fiveTapGesture)
         
+        // Six tap to test acc-venue1 detection
+        let sixTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugSixTapped))
+        sixTapGesture.numberOfTapsRequired = 6
+        advertisementImageView.addGestureRecognizer(sixTapGesture)
+        
+        // Seven tap to force full network detection refresh
+        let sevenTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugSevenTapped))
+        sevenTapGesture.numberOfTapsRequired = 7
+        advertisementImageView.addGestureRecognizer(sevenTapGesture)
+        
         print("🧪 Debug gestures enabled:")
         print("  - Double tap image: Force switch to SONY branding")
         print("  - Triple tap image: Force switch to neoX branding") 
         print("  - Quad tap image: Simulate ACLCloudRadius network")
         print("  - Five tap image: Test exact acloudradius.net SSID")
+        print("  - Six tap image: Test acc-venue1 detection")
+        print("  - Seven tap image: Force full network refresh")
         print("  - Long press status: Cycle through network simulations")
     }
     
@@ -174,6 +186,24 @@ class ViewController: UIViewController {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             self.statusLabel.text = "🧪 Debug: Testing acloudradius.net SSID - should show SONY!"
+        }
+    }
+    
+    @objc private func debugSixTapped() {
+        print("🧪 DEBUG: Six tap detected - testing acc-venue1 detection")
+        networkMonitor.testACCVenue1Detection(ssid: "Current-Network-With-Venue")
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.statusLabel.text = "🧪 Debug: Testing acc-venue1 - should show SONY!"
+        }
+    }
+    
+    @objc private func debugSevenTapped() {
+        print("🧪 DEBUG: Seven tap detected - forcing full network refresh")
+        networkMonitor.debugForceNetworkDetection()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            self.statusLabel.text = "🧪 Debug: Full network refresh completed"
         }
     }
     
@@ -287,13 +317,13 @@ class ViewController: UIViewController {
             self.currentNetworkInfo = networkInfo
             
             if isACLCloudRadiusConnected {
-                print("✅ Switching to SONY branding - connected to acloudradius.net realm")
+                print("✅ Switching to SONY branding - connected to acloudradius.net realm or acc-venue1")
                 self.createSONYImage()
                 
                 if let info = networkInfo {
-                    self.statusLabel.text = "🎉 Connected to \(info.ssid)! Enjoy your premium WiFi experience."
+                    self.statusLabel.text = "Connected to \(info.ssid)"
                 } else {
-                    self.statusLabel.text = "🎉 Connected to Passpoint network! Enjoying premium experience."
+                    self.statusLabel.text = "Connected to premium network"
                 }
             } else if let info = networkInfo, info.isPasspoint {
                 print("🔍 Connected to Passpoint network but not acloudradius.net realm")
