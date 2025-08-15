@@ -5,9 +5,9 @@ import CoreLocation
 
 class ViewController: UIViewController {
     
-    @IBOutlet weak var profileButton: UIButton!
-    @IBOutlet weak var advertisementImageView: UIImageView!
-    @IBOutlet weak var statusLabel: UILabel!
+    private var profileButton: UIButton!
+    private var advertisementImageView: UIImageView!
+    private var statusLabel: UILabel!
     
     private let networkMonitor = NetworkMonitor.shared
     private var currentNetworkInfo: NetworkInfo?
@@ -27,62 +27,90 @@ class ViewController: UIViewController {
     }
     
     private func setupUI() {
-        print("🔵 Setting up UI components...")
+        print("🔵 Setting up UI components programmatically...")
         
-        // Verify outlets are connected
-        if profileButton == nil {
-            print("❌ ERROR: profileButton outlet is nil!")
-        } else {
-            print("✅ profileButton outlet is connected")
-        }
+        view.backgroundColor = .systemBackground
         
-        if statusLabel == nil {
-            print("❌ ERROR: statusLabel outlet is nil!")
-        } else {
-            print("✅ statusLabel outlet is connected")
-        }
+        // Create main stack view
+        let stackView = UIStackView()
+        stackView.axis = .vertical
+        stackView.alignment = .center
+        stackView.spacing = 30
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(stackView)
         
-        if advertisementImageView == nil {
-            print("❌ ERROR: advertisementImageView outlet is nil!")
-        } else {
-            print("✅ advertisementImageView outlet is connected")
-        }
+        // Create title label
+        let titleLabel = UILabel()
+        titleLabel.text = "ACCNeoX"
+        titleLabel.font = UIFont.boldSystemFont(ofSize: 24)
+        titleLabel.textColor = .systemOrange
+        titleLabel.textAlignment = .center
+        stackView.addArrangedSubview(titleLabel)
         
-        // Add debug gesture recognizers for testing UI switching
-        setupDebugGestures()
+        // Create advertisement image view
+        advertisementImageView = UIImageView()
+        advertisementImageView.contentMode = .scaleAspectFit
+        advertisementImageView.layer.cornerRadius = 12
+        advertisementImageView.clipsToBounds = true
+        advertisementImageView.backgroundColor = .secondarySystemBackground
+        advertisementImageView.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(advertisementImageView)
         
-        // Configure button
+        // Create profile button
+        profileButton = UIButton(type: .system)
         profileButton.setTitle("Access Free WiFi", for: .normal)
         profileButton.backgroundColor = .systemOrange
         profileButton.setTitleColor(.white, for: .normal)
         profileButton.layer.cornerRadius = 8
         profileButton.titleLabel?.font = UIFont.boldSystemFont(ofSize: 18)
-        
-        // Add programmatic target as backup
-        print("🔵 Adding programmatic button target...")
-        profileButton.addTarget(self, action: #selector(installProfileButtonTapped(_:)), for: .touchUpInside)
-        
-        // Make button more responsive
         profileButton.showsTouchWhenHighlighted = true
-        profileButton.adjustsImageWhenHighlighted = true
+        profileButton.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(profileButton)
         
-        print("🔵 Button configuration completed")
-        
-        // Configure status label
+        // Create status label
+        statusLabel = UILabel()
         statusLabel.text = "Tap the button to access free WiFi"
         statusLabel.textAlignment = .center
         statusLabel.numberOfLines = 0
         statusLabel.textColor = .label
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        stackView.addArrangedSubview(statusLabel)
         
-        // Configure image view
-        advertisementImageView.contentMode = .scaleAspectFit
-        advertisementImageView.layer.cornerRadius = 12
-        advertisementImageView.clipsToBounds = true
+        // Add spacer view
+        let spacerView = UIView()
+        stackView.addArrangedSubview(spacerView)
         
-        // Load default image initially
+        // Set up constraints
+        NSLayoutConstraint.activate([
+            // Stack view constraints
+            stackView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            stackView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: 20),
+            stackView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -20),
+            stackView.bottomAnchor.constraint(lessThanOrEqualTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -20),
+            
+            // Advertisement image view constraints
+            advertisementImageView.widthAnchor.constraint(equalToConstant: 300),
+            advertisementImageView.heightAnchor.constraint(equalToConstant: 200),
+            
+            // Profile button constraints
+            profileButton.widthAnchor.constraint(equalToConstant: 200),
+            profileButton.heightAnchor.constraint(equalToConstant: 50),
+            
+            // Status label constraints
+            statusLabel.leadingAnchor.constraint(equalTo: stackView.leadingAnchor),
+            statusLabel.trailingAnchor.constraint(equalTo: stackView.trailingAnchor)
+        ])
+        
+        // Add button target
+        profileButton.addTarget(self, action: #selector(installProfileButtonTapped(_:)), for: .touchUpInside)
+        
+        // Add debug gesture recognizers
+        setupDebugGestures()
+        
+        // Load default image
         loadDefaultImage()
         
-        print("🔵 UI setup completed successfully")
+        print("✅ Programmatic UI setup completed successfully")
     }
     
     private func setupDebugGestures() {
@@ -179,7 +207,7 @@ class ViewController: UIViewController {
         }
     }
     
-    @IBAction @objc func installProfileButtonTapped(_ sender: UIButton) {
+    @objc func installProfileButtonTapped(_ sender: UIButton) {
         print("🔵 Button tapped - installProfileButtonTapped called")
         
         // Immediate visual feedback to confirm button is working
