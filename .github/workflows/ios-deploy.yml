@@ -9,7 +9,6 @@ on:
 
 env:
   XCODE_VERSION: '16.0'
-  
 jobs:
   build-and-deploy:
     runs-on: macos-15
