@@ -194,7 +194,7 @@ class ViewController: UIViewController {
         networkMonitor.testACCVenue1Detection(ssid: "Current-Network-With-Venue")
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            self.statusLabel.text = "🧪 Debug: Testing acc-venue1 - should show SONY!"
+            self.statusLabel.text = "🧪 Testing: Should show 'Device connected to venue=acc-venue1'"
         }
     }
     
@@ -321,7 +321,14 @@ class ViewController: UIViewController {
                 self.createSONYImage()
                 
                 if let info = networkInfo {
-                    self.statusLabel.text = "Connected to \(info.ssid)"
+                    // Check if this is acc-venue1 based detection
+                    if info.hasACCVenue1 || (info.venueName?.lowercased().contains("acc-venue1") == true) {
+                        self.statusLabel.text = "Device connected to venue=acc-venue1"
+                        print("🎯 SONY branding triggered by acc-venue1 venue name")
+                    } else {
+                        self.statusLabel.text = "Connected to \(info.ssid)"
+                        print("🎯 SONY branding triggered by acloudradius.net network")
+                    }
                 } else {
                     self.statusLabel.text = "Connected to premium network"
                 }

@@ -57,18 +57,23 @@ class NetworkMonitor: NSObject {
         
         requestLocationPermissionIfNeeded()
         
-        // Start with more frequent checks for faster detection, then reduce frequency for stability
+        // Start with frequent checks for fast detection, maintain higher frequency for acc-venue1 networks
         var checkInterval: TimeInterval = 1.0
         monitoringTimer = Timer.scheduledTimer(withTimeInterval: checkInterval, repeats: true) { [weak self] timer in
             self?.checkCurrentNetwork()
             
-            // After 30 seconds, reduce frequency to preserve battery and improve stability  
+            // Check if we're connected to acc-venue1 network to maintain frequent monitoring
+            let hasACCVenue1Connection = self?.lastNetworkInfo?.hasACCVenue1 == true || 
+                                       self?.lastNetworkInfo?.venueName?.lowercased().contains("acc-venue1") == true
+            
+            // After 30 seconds, reduce frequency but keep higher for acc-venue1 networks
             if timer.timeInterval == 1.0 && Date().timeIntervalSince(timer.fireDate.addingTimeInterval(-30)) > 0 {
                 timer.invalidate()
-                self?.monitoringTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+                let newInterval: TimeInterval = hasACCVenue1Connection ? 2.0 : 3.0
+                self?.monitoringTimer = Timer.scheduledTimer(withTimeInterval: newInterval, repeats: true) { [weak self] _ in
                     self?.checkCurrentNetwork()
                 }
-                print("🔍 NetworkMonitor: Reduced monitoring frequency to 3 seconds for stability")
+                print("🔍 NetworkMonitor: Adjusted monitoring frequency to \(newInterval) seconds (acc-venue1: \(hasACCVenue1Connection))")
             }
         }
         
@@ -119,6 +124,13 @@ class NetworkMonitor: NSObject {
                 print("  - Current SSID: \(info.ssid)")
                 print("  - Current venue: \(info.venueName ?? "none")")
                 print("  - Branding state: \(currentBrandingState ? "SONY" : "neoX")")
+                print("  - acc-venue1 detected: \(info.hasACCVenue1)")
+                
+                // Force delegate update to ensure UI stays on SONY when acc-venue1 is present
+                if info.hasACCVenue1 || (info.venueName?.lowercased().contains("acc-venue1") == true) {
+                    print("🔍 NetworkMonitor: Ensuring SONY persistence for acc-venue1")
+                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: info)
+                }
                 return
             }
             
@@ -151,10 +163,18 @@ class NetworkMonitor: NSObject {
             let hasPasspointACLPattern = info.isPasspoint && (realmLower.contains("acloudradius") || 
                                         realmLower.contains("sony") || hasACLPattern)
             
-            // Check for acc-venue1 venue name attribute (NEW REQUIREMENT)
+            // Check for acc-venue1 venue name attribute (PRIMARY REQUIREMENT)
             let hasACCVenue1 = info.hasACCVenue1
             let venueNameLower = info.venueName?.lowercased() ?? ""
             let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
+            
+            // Priority check: acc-venue1 detection is primary trigger
+            if hasACCVenue1 || hasACCVenueName {
+                print("🎯 PRIMARY TRIGGER: acc-venue1 venue detected!")
+                print("  - Venue name: \(info.venueName ?? "inferred")")
+                print("  - hasACCVenue1: \(hasACCVenue1)")
+                print("  - hasACCVenueName: \(hasACCVenueName)")
+            }
             
             // Determine if this is an ACLCloudRadius network - be more inclusive for SSID matches
             let isACLCloudRadiusNetwork = hasACLCloudRadiusRealm || hasACLCloudRadiusSSID || hasACLCloudRadiusInRealm || 
@@ -609,9 +629,10 @@ class NetworkMonitor: NSObject {
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
     }
     
-    // Test specifically for acc-venue1 venue name detection (NEW REQUIREMENT)
-    func testACCVenue1Detection(ssid: String = "Test-Venue-Network") {
+    // Test specifically for acc-venue1 venue name detection (PRIMARY REQUIREMENT)
+    func testACCVenue1Detection(ssid: String = "WiFi-Network-With-Venue") {
         print("🧪 NetworkMonitor: Testing acc-venue1 venue name detection")
+        print("🧪 Expected message: 'Device connected to venue=acc-venue1'")
         
         let testNetworkInfo = NetworkInfo(
             ssid: ssid,
@@ -623,6 +644,7 @@ class NetworkMonitor: NSObject {
         )
         
         print("🧪 This should trigger SONY branding via venue name acc-venue1")
+        print("🧪 SSID: \(ssid), Venue: acc-venue1")
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
     }
     
