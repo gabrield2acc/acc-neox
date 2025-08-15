@@ -41,58 +41,68 @@ jobs:
     - name: Show Xcode version
       run: xcodebuild -version
       
-    - name: Install iOS platforms and fix storyboard compatibility
+    - name: Install iOS platforms and components
       run: |
         echo "Installing iOS platforms for Xcode 16..."
         # Install iOS 18.0 simulator and platforms if available
         sudo xcodebuild -runFirstLaunch || echo "First launch already completed"
         
-        # Force download and install all iOS platforms
-        echo "Downloading iOS platforms..."
-        xcodebuild -downloadAllPlatforms || echo "Download all platforms failed, trying individual downloads"
+        # Force download and install all iOS platforms with enhanced installation
+        echo "Downloading iOS 18.0 platform components..."
         
-        # Try specific iOS platform downloads
-        xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
-        xcodebuild -downloadPlatform iOSSimulator || echo "iOS Simulator download failed or already installed"
+        # Try multiple installation approaches for iOS 18.0 platform
+        sudo xcodebuild -downloadAllPlatforms || echo "Download all platforms failed, trying individual downloads"
         
-        # Install iOS 17.x platforms as well for storyboard compatibility
-        echo "Installing iOS 17.x platforms for storyboard compatibility..."
-        xcodebuild -downloadPlatform iOS -version 17.5 || echo "iOS 17.5 download failed or not available"
-        xcodebuild -downloadPlatform iOS -version 17.4 || echo "iOS 17.4 download failed or not available"
+        # Specific iOS 18.0 platform installation attempts
+        echo "Attempting specific iOS 18.0 platform installation..."
+        sudo xcodebuild -downloadPlatform iOS -version 18.0 || echo "iOS 18.0 download failed, trying alternatives"
+        sudo xcodebuild -downloadPlatform iOSSimulator -version 18.0 || echo "iOS 18.0 Simulator download failed"
         
-        # Install components manually if available
-        echo "Installing iOS runtime components..."
-        xcrun simctl runtime add iOS || echo "Runtime add failed or already installed"
+        # Force install iOS platform without version specification
+        sudo xcodebuild -downloadPlatform iOS || echo "iOS platform download failed or already installed"
+        sudo xcodebuild -downloadPlatform iOSSimulator || echo "iOS Simulator download failed or already installed"
+        
+        # Install runtime components for iOS 18.0
+        echo "Installing iOS 18.0 runtime components..."
+        sudo xcrun simctl runtime add iOS || echo "Runtime add failed or already installed"
+        
+        # Install additional iOS versions as fallbacks
+        echo "Installing fallback iOS platforms..."
+        sudo xcodebuild -downloadPlatform iOS -version 17.5 || echo "iOS 17.5 download failed"
+        sudo xcodebuild -downloadPlatform iOS -version 17.4 || echo "iOS 17.4 download failed"
         
         # Force acceptance of platform licenses
         sudo xcodebuild -license accept || echo "License already accepted"
         
-        # Additional storyboard compatibility fixes
-        echo "Fixing storyboard compilation compatibility..."
-        
-        # Install additional Xcode components that might be needed
+        # Install additional Xcode components
+        echo "Installing additional Xcode components..."
         sudo xcodebuild -downloadPlatform tvOS || echo "tvOS download failed"
         sudo xcodebuild -downloadPlatform watchOS || echo "watchOS download failed"
-        
-        # Ensure Interface Builder components are available
-        echo "Installing Interface Builder components..."
         sudo xcodebuild -installComponents || echo "Component installation failed or already installed"
         
-        # Force rebuild of Xcode caches that might affect storyboard compilation
-        echo "Rebuilding Xcode caches..."
+        # Alternative platform installation using xcrun
+        echo "Attempting xcrun platform installation..."
+        sudo xcrun --install iphoneos || echo "xcrun platform install failed"
+        
+        # Force update Xcode command line tools
+        echo "Updating Xcode command line tools..."
+        sudo xcode-select --install || echo "Command line tools already installed"
+        
+        # Clean and rebuild Xcode caches
+        echo "Cleaning Xcode caches..."
         rm -rf ~/Library/Caches/com.apple.dt.Xcode || echo "Cache cleanup failed"
         rm -rf ~/Library/Developer/Xcode/DerivedData || echo "DerivedData cleanup failed"
         
-        # Wait for installation to complete
-        sleep 15
+        # Extended wait for platform installation
+        sleep 30
         
         # List all available platforms to verify installation
         echo "Available platforms after installation:"
         xcodebuild -showsdks
         
-        # List available destinations to check if iOS device destination is available
-        echo "Testing destination availability:"
-        xcodebuild -showdestinations -scheme ACCNeoX -project ACCNeoX.xcodeproj || echo "Destinations not yet available"
+        # Check iOS device availability specifically
+        echo "Checking iOS device availability..."
+        xcodebuild -showdestinations -scheme ACCNeoX -project ACCNeoX.xcodeproj | grep -E "(iOS|platform)" || echo "iOS destinations check failed"
       
     - name: Verify Xcode project exists
       run: |
@@ -180,23 +190,27 @@ jobs:
         echo "Available SDKs:"
         xcodebuild -showsdks
         
-    - name: Build iOS App with Storyboard Compatibility
+    - name: Build iOS App with Programmatic UI
       run: |
         mkdir -p build
         
-        echo "🔧 Pre-build storyboard compatibility fixes..."
+        echo "🔧 Pre-build setup for programmatic UI..."
         
-        # Clear any storyboard compilation caches that might be causing issues
-        rm -rf ~/Library/Caches/com.apple.InterfaceBuilder3 || echo "IB cache cleanup failed"
+        # Clear build caches 
+        rm -rf ~/Library/Caches/com.apple.dt.Xcode || echo "Xcode cache cleanup failed"
         rm -rf ~/Library/Developer/Xcode/DerivedData/ACCNeoX* || echo "Project cache cleanup failed"
         
-        # Verify storyboard files have compatible toolsVersion
-        echo "Checking storyboard compatibility..."
-        MAIN_STORYBOARD_TOOLS_VERSION=$(grep -o 'toolsVersion="[^"]*"' ACCNeoX/Base.lproj/Main.storyboard | cut -d'"' -f2)
-        LAUNCH_STORYBOARD_TOOLS_VERSION=$(grep -o 'toolsVersion="[^"]*"' ACCNeoX/Base.lproj/LaunchScreen.storyboard | cut -d'"' -f2)
-        
-        echo "Main.storyboard toolsVersion: $MAIN_STORYBOARD_TOOLS_VERSION"
-        echo "LaunchScreen.storyboard toolsVersion: $LAUNCH_STORYBOARD_TOOLS_VERSION"
+        # Verify no storyboard files exist (should all be removed)
+        echo "Verifying storyboard removal..."
+        if [ -f "ACCNeoX/Base.lproj/Main.storyboard" ]; then
+          echo "ERROR: Main.storyboard still exists!"
+          exit 1
+        fi
+        if [ -f "ACCNeoX/Base.lproj/LaunchScreen.storyboard" ]; then
+          echo "ERROR: LaunchScreen.storyboard still exists!"
+          exit 1
+        fi
+        echo "✅ Confirmed: All storyboards removed - using programmatic UI"
         
         # Find an iOS SDK that's actually installed (avoid iOS 18.0 if not installed)
         AVAILABLE_SDKS=$(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}')
@@ -268,7 +282,7 @@ jobs:
           echo "✅ Build succeeded with $LATEST_IOS_SDK"
         else
           echo "❌ Build failed with $LATEST_IOS_SDK"
-          echo "📋 Checking for storyboard compilation errors in build log..."
+          echo "📋 Checking build log for platform installation issues..."
           
           # Try with alternative SDKs in order of preference
           ALL_IOS_SDKS=($(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}'))
@@ -310,14 +324,20 @@ jobs:
           
           if [ "$BUILD_SUCCESS" = false ]; then
             echo "💥 Build failed with all available iOS SDKs: ${ALL_IOS_SDKS[@]}"
-            echo "🔍 This might be due to storyboard compilation issues. Checking available Interface Builder tools..."
+            echo "🔍 Checking for platform installation and build tool issues..."
             
-            # Debug Interface Builder availability
-            which ibtool || echo "ibtool not found - storyboard compilation will fail"
+            # Debug build tools availability
+            echo "Checking Xcode build tools:"
+            which xcodebuild || echo "xcodebuild not found"
+            which xcrun || echo "xcrun not found"
             
-            # List all Xcode tools
+            # Check platform installation
+            echo "Platform installation status:"
+            xcodebuild -showsdks | grep iphoneos || echo "No iOS SDKs detected"
+            
+            # List all Xcode tools for debugging
             echo "Available Xcode tools:"
-            ls -la $(xcode-select -p)/usr/bin/ | grep -E "(ibtool|actool|copypng)" || echo "Critical Xcode tools missing"
+            ls -la $(xcode-select -p)/usr/bin/ | grep -E "(xcodebuild|xcrun|actool|copypng)" || echo "Critical Xcode tools missing"
             
             exit 1
           fi
