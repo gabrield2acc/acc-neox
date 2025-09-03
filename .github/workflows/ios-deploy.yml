@@ -271,7 +271,7 @@ jobs:
           echo "⚠️  No iOS device destinations available - using generic destination"
         fi
         
-        # Enhanced build command with asset catalog simulator runtime fix
+        # Enhanced build command with strict iPhone-only asset catalog compilation
         BUILD_CMD="xcodebuild \
           -project ACCNeoX.xcodeproj \
           -scheme ACCNeoX \
@@ -286,7 +286,10 @@ jobs:
           IPHONEOS_DEPLOYMENT_TARGET=14.0 \
           SKIP_INSTALL=NO \
           BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
-          TARGETED_DEVICE_FAMILY=1"
+          TARGETED_DEVICE_FAMILY=1 \
+          ENABLE_PREVIEWS=NO \
+          SUPPORTS_MACCATALYST=NO \
+          SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO"
         
         # Always add destination parameter for iOS device builds
         BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
@@ -308,7 +311,7 @@ jobs:
             if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
               echo "🔄 Trying fallback SDK: $SDK"
               
-              # Build fallback command with iPhone-only target to avoid simulator runtime issues
+              # Build fallback command with strict iPhone-only targeting
               FALLBACK_BUILD_CMD="xcodebuild \
                 -project ACCNeoX.xcodeproj \
                 -scheme ACCNeoX \
@@ -323,7 +326,10 @@ jobs:
                 IPHONEOS_DEPLOYMENT_TARGET=14.0 \
                 SKIP_INSTALL=NO \
                 BUILD_LIBRARY_FOR_DISTRIBUTION=NO \
-                TARGETED_DEVICE_FAMILY=1"
+                TARGETED_DEVICE_FAMILY=1 \
+                ENABLE_PREVIEWS=NO \
+                SUPPORTS_MACCATALYST=NO \
+                SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO"
               
               # Always add destination parameter for iOS device builds  
               FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
