@@ -151,6 +151,11 @@ class ViewController: UIViewController {
         sevenTapGesture.numberOfTapsRequired = 7
         advertisementImageView.addGestureRecognizer(sevenTapGesture)
         
+        // Eight tap to force permanent SONY lock for troubleshooting
+        let eightTapGesture = UITapGestureRecognizer(target: self, action: #selector(debugEightTapped))
+        eightTapGesture.numberOfTapsRequired = 8
+        advertisementImageView.addGestureRecognizer(eightTapGesture)
+        
         print("🧪 Debug gestures enabled:")
         print("  - Double tap image: Force switch to SONY branding")
         print("  - Triple tap image: Force switch to neoX branding") 
@@ -158,6 +163,7 @@ class ViewController: UIViewController {
         print("  - Five tap image: Test exact acloudradius.net SSID")
         print("  - Six tap image: Test acc-venue1 detection")
         print("  - Seven tap image: Force full network refresh")
+        print("  - Eight tap image: Force permanent SONY lock")
         print("  - Long press status: Cycle through network simulations")
     }
     
@@ -204,6 +210,15 @@ class ViewController: UIViewController {
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             self.statusLabel.text = "🧪 Debug: Full network refresh completed"
+        }
+    }
+    
+    @objc private func debugEightTapped() {
+        print("🧪 DEBUG: Eight tap detected - forcing permanent SONY lock")
+        networkMonitor.forcePermanentSONYLock()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.statusLabel.text = "🔒 EMERGENCY: Permanent SONY lock activated!"
         }
     }
     

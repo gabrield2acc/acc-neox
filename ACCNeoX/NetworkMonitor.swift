@@ -123,47 +123,49 @@ class NetworkMonitor: NSObject {
             let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
             let isACCVenue1Network = hasACCVenue1 || hasACCVenueName
             
-            // If acc-venue1 detected, lock to SONY branding
+            // PRIORITY 1: Check if connected to acc-venue1 and lock SONY branding immediately
             if isACCVenue1Network {
+                print("🎯 CRITICAL: acc-venue1 network detected - FORCING SONY branding lock")
+                print("  - Current SSID: \(info.ssid)")
+                print("  - Venue name: \(info.venueName ?? "inferred")")
+                print("  - hasACCVenue1: \(hasACCVenue1)")
+                print("  - hasACCVenueName: \(hasACCVenueName)")
+                
                 if !isLockedToSONY {
                     print("🔒 NetworkMonitor: LOCKING to SONY branding due to acc-venue1 detection!")
                     isLockedToSONY = true
                     accVenue1NetworkDetected = true
                 }
+                
+                // ALWAYS show SONY immediately when acc-venue1 is detected
+                currentBrandingState = true
+                lastNetworkInfo = info
+                
+                let enhancedInfo = NetworkInfo(
+                    ssid: info.ssid,
+                    bssid: info.bssid,
+                    realm: info.realm ?? targetRealm,
+                    isPasspoint: true,
+                    signalStrength: info.signalStrength,
+                    venueName: info.venueName ?? "acc-venue1"
+                )
+                
+                print("🔒 LOCKED STATE: Forcing SONY branding for acc-venue1")
+                delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: enhancedInfo)
+                return  // EXIT IMMEDIATELY - do not process any other logic
             }
             
-            // If locked to SONY, check if we should stay locked or unlock
+            // PRIORITY 2: If locked to SONY but no longer on acc-venue1, unlock
             if isLockedToSONY {
-                print("🔒 NetworkMonitor: SONY branding LOCKED - checking current network")
+                print("🔒 NetworkMonitor: Currently locked to SONY but acc-venue1 not detected")
                 print("  - Current SSID: \(info.ssid)")
                 print("  - Current venue: \(info.venueName ?? "none")")
-                print("  - acc-venue1 detected in current network: \(isACCVenue1Network)")
+                print("  - UNLOCKING from SONY branding - no longer on acc-venue1")
                 
-                // If current network doesn't have acc-venue1, unlock from SONY
-                if !isACCVenue1Network {
-                    print("🔓 NetworkMonitor: Current network doesn't have acc-venue1 - UNLOCKING from SONY branding")
-                    isLockedToSONY = false
-                    accVenue1NetworkDetected = false
-                    print("🔓 NetworkMonitor: UNLOCKED from SONY branding - switched to non-acc-venue1 network")
-                } else {
-                    print("🔒 NetworkMonitor: Still connected to acc-venue1 network - maintaining SONY lock")
-                    
-                    // Always show SONY when locked to acc-venue1
-                    currentBrandingState = true
-                    lastNetworkInfo = info
-                    
-                    let enhancedInfo = NetworkInfo(
-                        ssid: info.ssid,
-                        bssid: info.bssid,
-                        realm: info.realm ?? targetRealm,
-                        isPasspoint: true,
-                        signalStrength: info.signalStrength,
-                        venueName: info.venueName ?? "acc-venue1"
-                    )
-                    
-                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: enhancedInfo)
-                    return
-                }
+                isLockedToSONY = false
+                accVenue1NetworkDetected = false
+                print("🔓 NetworkMonitor: UNLOCKED from SONY branding")
+                // Continue processing to determine correct branding for current network
             }
             
             // Check if network info has actually changed to avoid unnecessary UI updates
@@ -408,83 +410,87 @@ class NetworkMonitor: NSObject {
     }
     
     private func extractVenueNameFromNetwork(interfaceInfo: NSDictionary, ssid: String) -> String? {
-        print("🔍 NetworkMonitor: Extracting venue name for SSID: '\(ssid)'")
+        print("🔍 NetworkMonitor: Extracting REAL venue name from ANQP for SSID: '\(ssid)'")
         
-        // Method 1: Check NetworkExtensionInfo for venue information
-        if let networkExtensionInfo = interfaceInfo["NetworkExtensionInfo"] as? [String: Any] {
-            print("🔍 NetworkMonitor: Checking NetworkExtensionInfo for venue name: \(networkExtensionInfo)")
-            if let venueName = networkExtensionInfo["VenueName"] as? String {
-                print("✅ NetworkMonitor: Found venue name in NetworkExtensionInfo: \(venueName)")
-                return venueName
-            }
-            if let venueInfo = networkExtensionInfo["VenueInfo"] as? String {
-                print("✅ NetworkMonitor: Found venue info in NetworkExtensionInfo: \(venueInfo)")
-                return venueInfo
-            }
-            // Check nested objects for venue information
-            for (key, value) in networkExtensionInfo {
-                if let stringValue = value as? String, 
-                   (key.lowercased().contains("venue") || stringValue.lowercased().contains("acc-venue1")) {
-                    print("✅ NetworkMonitor: Found venue-related info in '\(key)': \(stringValue)")
-                    return stringValue
-                }
-            }
-        }
-        
-        // Method 2: Check PasspointInfo for venue information
+        // Method 1: Check PasspointInfo for ANQP venue information (PRIMARY SOURCE)
         if let passpointInfo = interfaceInfo["PasspointInfo"] as? [String: Any] {
-            print("🔍 NetworkMonitor: Checking PasspointInfo for venue name: \(passpointInfo)")
-            if let venueName = passpointInfo["VenueName"] as? String {
-                print("✅ NetworkMonitor: Found venue name in PasspointInfo: \(venueName)")
-                return venueName
+            print("🔍 NetworkMonitor: Found PasspointInfo - checking for ANQP venue data: \(passpointInfo)")
+            
+            // Check all possible ANQP venue keys
+            let anqpVenueKeys = ["VenueName", "venue_name", "VenueInfo", "venue_info", 
+                               "ANQPVenueName", "anqp_venue_name", "Venue", "venue",
+                               "VenueGroup", "venue_group", "VenueType", "venue_type",
+                               "ANQPVenueInfo", "anqp_venue_info"]
+            
+            for key in anqpVenueKeys {
+                if let venueValue = passpointInfo[key] as? String {
+                    print("✅ NetworkMonitor: Found ANQP venue name with key '\(key)': \(venueValue)")
+                    return venueValue
+                }
             }
-            if let venueGroup = passpointInfo["VenueGroup"] as? String {
-                print("✅ NetworkMonitor: Found venue group in PasspointInfo: \(venueGroup)")
-                return venueGroup
-            }
-            if let venueType = passpointInfo["VenueType"] as? String {
-                print("✅ NetworkMonitor: Found venue type in PasspointInfo: \(venueType)")
-                return venueType
-            }
-        }
-        
-        // Method 3: Check for other possible keys containing venue info
-        let possibleVenueKeys = ["venue", "Venue", "VenueName", "venue_name", "VenueInfo", "venue_info", 
-                                "VenueGroup", "venue_group", "VenueType", "venue_type"]
-        for key in possibleVenueKeys {
-            if let venueValue = interfaceInfo[key] as? String {
-                print("✅ NetworkMonitor: Found venue with key '\(key)': \(venueValue)")
-                return venueValue
-            }
-        }
-        
-        // Method 4: Check for acc-venue1 pattern in any string values (comprehensive search)
-        for key in interfaceInfo.allKeys {
-            if let stringValue = interfaceInfo[key] as? String {
-                let lowerValue = stringValue.lowercased()
-                if lowerValue.contains("acc-venue1") || lowerValue.contains("acc venue1") {
-                    print("✅ NetworkMonitor: Found acc-venue1 pattern in key '\(key)': \(stringValue)")
-                    return stringValue
+            
+            // Check for nested ANQP data structures
+            for (key, value) in passpointInfo {
+                if key.lowercased().contains("anqp") || key.lowercased().contains("venue") {
+                    print("🔍 NetworkMonitor: Checking ANQP/venue key '\(key)': \(value)")
+                    
+                    if let stringValue = value as? String {
+                        print("✅ NetworkMonitor: Found venue string in '\(key)': \(stringValue)")
+                        return stringValue
+                    } else if let dictValue = value as? [String: Any] {
+                        // Check nested dictionaries for venue information
+                        for (nestedKey, nestedValue) in dictValue {
+                            if let nestedString = nestedValue as? String,
+                               nestedKey.lowercased().contains("venue") {
+                                print("✅ NetworkMonitor: Found venue in nested key '\(nestedKey)': \(nestedString)")
+                                return nestedString
+                            }
+                        }
+                    }
                 }
             }
         }
         
-        // Method 5: SSID-based venue inference (since iOS may not expose venue name directly)
-        let ssidLower = ssid.lowercased()
-        if ssidLower.contains("acc-venue") || ssidLower.contains("venue1") || 
-           ssidLower.contains("acc venue") || ssidLower.contains("accvenue") {
-            print("✅ NetworkMonitor: Inferred acc-venue1 from SSID pattern: \(ssid)")
-            return "acc-venue1"
+        // Method 2: Check NetworkExtensionInfo for ANQP data
+        if let networkExtensionInfo = interfaceInfo["NetworkExtensionInfo"] as? [String: Any] {
+            print("🔍 NetworkMonitor: Checking NetworkExtensionInfo for ANQP venue: \(networkExtensionInfo)")
+            
+            // Look for ANQP venue information in NetworkExtensionInfo
+            let anqpKeys = ["VenueName", "ANQPVenueName", "VenueInfo", "ANQPVenueInfo", "Venue"]
+            for key in anqpKeys {
+                if let venueValue = networkExtensionInfo[key] as? String {
+                    print("✅ NetworkMonitor: Found ANQP venue in NetworkExtensionInfo '\(key)': \(venueValue)")
+                    return venueValue
+                }
+            }
         }
         
-        // Method 6: Check if connected to known ACC networks and assume acc-venue1
-        if ssidLower.contains("acloudradius") || ssidLower.contains("test-acloudradius") ||
-           ssidLower.contains("acl") && (ssidLower.contains("cloud") || ssidLower.contains("radius")) {
-            print("✅ NetworkMonitor: Inferring acc-venue1 for known ACLCloudRadius network: \(ssid)")
-            return "acc-venue1"
+        // Method 3: Comprehensive search for ANY venue-related keys containing ANQP data
+        print("🔍 NetworkMonitor: Performing comprehensive ANQP venue search...")
+        for key in interfaceInfo.allKeys {
+            let keyString = String(describing: key).lowercased()
+            
+            // Look for keys that might contain ANQP venue information
+            if keyString.contains("venue") || keyString.contains("anqp") {
+                print("🔍 NetworkMonitor: Found potential ANQP venue key '\(key)': \(interfaceInfo[key] ?? "nil")")
+                
+                if let stringValue = interfaceInfo[key] as? String {
+                    print("✅ NetworkMonitor: Found ANQP venue string value: \(stringValue)")
+                    return stringValue
+                } else if let dictValue = interfaceInfo[key] as? [String: Any] {
+                    // Search within nested dictionaries for venue information
+                    for (nestedKey, nestedValue) in dictValue {
+                        if let nestedString = nestedValue as? String {
+                            print("✅ NetworkMonitor: Found venue in nested ANQP data '\(nestedKey)': \(nestedString)")
+                            return nestedString
+                        }
+                    }
+                }
+            }
         }
         
-        print("❌ NetworkMonitor: No venue name detected for SSID: '\(ssid)'")
+        print("❌ NetworkMonitor: No ANQP venue name detected from access point for SSID: '\(ssid)'")
+        print("🔍 NetworkMonitor: This means access point is not broadcasting venue information via ANQP")
         return nil
     }
     
@@ -684,18 +690,46 @@ class NetworkMonitor: NSObject {
         print("🧪 NetworkMonitor: Testing acc-venue1 venue name detection")
         print("🧪 Expected message: 'Device connected to venue=acc-venue1'")
         
+        // Force lock to SONY immediately
+        isLockedToSONY = true
+        accVenue1NetworkDetected = true
+        currentBrandingState = true
+        
         let testNetworkInfo = NetworkInfo(
             ssid: ssid,
             bssid: nil,
-            realm: nil,
+            realm: targetRealm,
             isPasspoint: true,
             signalStrength: nil,
             venueName: "acc-venue1"
         )
         
+        lastNetworkInfo = testNetworkInfo
         print("🧪 This should trigger SONY branding via venue name acc-venue1")
         print("🧪 SSID: \(ssid), Venue: acc-venue1")
+        print("🔒 FORCING SONY LOCK STATE for testing")
         delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: testNetworkInfo)
+    }
+    
+    // Force permanent SONY branding lock (for troubleshooting)
+    func forcePermanentSONYLock() {
+        print("🔒 EMERGENCY: Forcing permanent SONY branding lock!")
+        isLockedToSONY = true
+        accVenue1NetworkDetected = true
+        currentBrandingState = true
+        
+        let forcedInfo = NetworkInfo(
+            ssid: "FORCED-ACC-VENUE1",
+            bssid: nil,
+            realm: targetRealm,
+            isPasspoint: true,
+            signalStrength: nil,
+            venueName: "acc-venue1"
+        )
+        
+        lastNetworkInfo = forcedInfo
+        delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: forcedInfo)
+        print("🔒 PERMANENT SONY LOCK ACTIVATED")
     }
     
     // Debug method to force immediate network detection with state reset
