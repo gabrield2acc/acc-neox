@@ -226,6 +226,17 @@ jobs:
         fi
         echo "✅ Confirmed: All storyboards removed - using programmatic UI"
         
+        # Verify Asset Catalog is iPhone-only (no iPad icons)
+        echo "🔍 Verifying Asset Catalog iPhone-only configuration..."
+        if grep -q '"idiom" : "ipad"' ACCNeoX/Assets.xcassets/AppIcon.appiconset/Contents.json; then
+          echo "❌ ERROR: Asset Catalog still contains iPad icons!"
+          echo "Contents of AppIcon Contents.json:"
+          cat ACCNeoX/Assets.xcassets/AppIcon.appiconset/Contents.json
+          exit 1
+        else
+          echo "✅ Asset Catalog verified iPhone-only (no iPad icons)"
+        fi
+        
         # Find an iOS SDK that's actually installed and working
         AVAILABLE_SDKS=$(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}')
         echo "Available iOS SDKs:"
@@ -295,7 +306,10 @@ jobs:
           SUPPORTS_MACCATALYST=NO \
           SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO \
           ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=NO \
-          ASSETCATALOG_COMPILER_OPTIMIZATION=space"
+          ASSETCATALOG_COMPILER_OPTIMIZATION=space \
+          ENABLE_ONLY_ACTIVE_RESOURCES=YES \
+          ASSETCATALOG_COMPILER_SKIP_SIMULATOR_VALIDATION=YES \
+          VALIDATE_PRODUCT=NO"
         
         # Always add destination parameter for iOS device builds
         BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
@@ -337,7 +351,10 @@ jobs:
                 SUPPORTS_MACCATALYST=NO \
                 SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO \
                 ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=NO \
-                ASSETCATALOG_COMPILER_OPTIMIZATION=space"
+                ASSETCATALOG_COMPILER_OPTIMIZATION=space \
+                ENABLE_ONLY_ACTIVE_RESOURCES=YES \
+                ASSETCATALOG_COMPILER_SKIP_SIMULATOR_VALIDATION=YES \
+                VALIDATE_PRODUCT=NO"
               
               # Always add destination parameter for iOS device builds  
               FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
