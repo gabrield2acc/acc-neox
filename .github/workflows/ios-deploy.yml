@@ -226,21 +226,25 @@ jobs:
         fi
         echo "✅ Confirmed: All storyboards removed - using programmatic UI"
         
-        # Find an iOS SDK that's actually installed (avoid iOS 18.0 if not installed)
+        # Find an iOS SDK that's actually installed and working
         AVAILABLE_SDKS=$(xcodebuild -showsdks | grep iphoneos | awk '{print $NF}')
         echo "Available iOS SDKs:"
         echo "$AVAILABLE_SDKS"
         
-        # Try to find the best available SDK for App Store submission
-        LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos18\." | tail -1)
+        # Use iOS 17.5 or 17.4 as primary choice to avoid iOS 18.x runtime issues
+        LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos17\.[5-9]" | tail -1)
         if [ -z "$LATEST_IOS_SDK" ]; then
-          # Try iOS 17.x if 18.x not available
+          # Try any iOS 17.x version
           LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos17\." | tail -1)
         fi
         if [ -z "$LATEST_IOS_SDK" ]; then
-          # Use latest available as fallback
+          # Fallback to iOS 18.x if 17.x not available
+          LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | grep -E "iphoneos18\." | tail -1)
+        fi
+        if [ -z "$LATEST_IOS_SDK" ]; then
+          # Use latest available as last resort
           LATEST_IOS_SDK=$(echo "$AVAILABLE_SDKS" | tail -1)
-          echo "Warning: Using $LATEST_IOS_SDK - may not meet App Store requirements"
+          echo "Warning: Using $LATEST_IOS_SDK - may have compatibility issues"
         fi
         
         # Extract just the version number for validation
@@ -289,7 +293,9 @@ jobs:
           TARGETED_DEVICE_FAMILY=1 \
           ENABLE_PREVIEWS=NO \
           SUPPORTS_MACCATALYST=NO \
-          SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO"
+          SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO \
+          ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=NO \
+          ASSETCATALOG_COMPILER_OPTIMIZATION=space"
         
         # Always add destination parameter for iOS device builds
         BUILD_CMD="$BUILD_CMD -destination \"generic/platform=iOS\" archive"
@@ -311,7 +317,7 @@ jobs:
             if [ "$SDK" != "$LATEST_IOS_SDK" ]; then
               echo "🔄 Trying fallback SDK: $SDK"
               
-              # Build fallback command with strict iPhone-only targeting
+              # Build fallback command with strict iPhone-only targeting and Asset Catalog fixes
               FALLBACK_BUILD_CMD="xcodebuild \
                 -project ACCNeoX.xcodeproj \
                 -scheme ACCNeoX \
@@ -329,7 +335,9 @@ jobs:
                 TARGETED_DEVICE_FAMILY=1 \
                 ENABLE_PREVIEWS=NO \
                 SUPPORTS_MACCATALYST=NO \
-                SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO"
+                SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD=NO \
+                ASSETCATALOG_COMPILER_SKIP_APP_STORE_DEPLOYMENT=NO \
+                ASSETCATALOG_COMPILER_OPTIMIZATION=space"
               
               # Always add destination parameter for iOS device builds  
               FALLBACK_BUILD_CMD="$FALLBACK_BUILD_CMD -destination \"generic/platform=iOS\" archive"
