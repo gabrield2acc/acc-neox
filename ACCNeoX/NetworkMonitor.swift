@@ -116,6 +116,9 @@ class NetworkMonitor: NSObject {
     private func checkCurrentNetwork() {
         let networkInfo = getCurrentNetworkInfo()
         
+        // ENHANCEMENT: Also scan for nearby networks with acc-venue1 even if not connected
+        scanForNearbyAccVenue1Networks()
+        
         if let info = networkInfo {
             // Check for acc-venue1 venue name immediately
             let hasACCVenue1 = info.hasACCVenue1
@@ -155,16 +158,38 @@ class NetworkMonitor: NSObject {
                 return  // EXIT IMMEDIATELY - do not process any other logic
             }
             
-            // PRIORITY 2: If locked to SONY but no longer on acc-venue1, unlock
+            // PRIORITY 2: If locked to SONY but no longer on acc-venue1, check if we should unlock
             if isLockedToSONY {
-                print("🔒 NetworkMonitor: Currently locked to SONY but acc-venue1 not detected")
+                print("🔒 NetworkMonitor: Currently locked to SONY but acc-venue1 not detected on current network")
                 print("  - Current SSID: \(info.ssid)")
                 print("  - Current venue: \(info.venueName ?? "none")")
-                print("  - UNLOCKING from SONY branding - no longer on acc-venue1")
                 
-                isLockedToSONY = false
-                accVenue1NetworkDetected = false
-                print("🔓 NetworkMonitor: UNLOCKED from SONY branding")
+                // IMPORTANT: Only unlock if we're connected to a completely different network
+                // Stay locked if we're just switching between networks in the same location
+                let isDifferentLocation = !ssidLooksLikeACCLocation(info.ssid)
+                
+                if isDifferentLocation {
+                    print("  - UNLOCKING from SONY branding - moved to different location")
+                    isLockedToSONY = false
+                    accVenue1NetworkDetected = false
+                    print("🔓 NetworkMonitor: UNLOCKED from SONY branding")
+                } else {
+                    print("  - MAINTAINING SONY lock - still appears to be in ACC location")
+                    
+                    // Maintain SONY branding even if acc-venue1 not detected on current network
+                    let persistentInfo = NetworkInfo(
+                        ssid: info.ssid,
+                        bssid: info.bssid,
+                        realm: info.realm ?? targetRealm,
+                        isPasspoint: true,
+                        signalStrength: info.signalStrength,
+                        venueName: "acc-venue1"
+                    )
+                    
+                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: persistentInfo)
+                    return // EXIT - maintain SONY branding
+                }
+                
                 // Continue processing to determine correct branding for current network
             }
             
@@ -666,6 +691,94 @@ class NetworkMonitor: NSObject {
         
         print("🧪 Simulation result: \(isACLCloudRadiusNetwork ? "SONY" : "neoX") branding")
         delegate?.networkStatusChanged(isPasspointConnected: isACLCloudRadiusNetwork, networkInfo: testNetworkInfo)
+    }
+    
+    // Check if currently locked to SONY branding (for ViewController)
+    func isCurrentlyLockedToSONY() -> Bool {
+        return isLockedToSONY
+    }
+    
+    // Scan for nearby WiFi networks that might have acc-venue1 venue name
+    private func scanForNearbyAccVenue1Networks() {
+        print("🔍 NetworkMonitor: Scanning for nearby acc-venue1 networks...")
+        
+        // This method attempts to detect acc-venue1 venue names from nearby access points
+        // even if not currently connected to them
+        
+        guard let interfaces = CNCopySupportedInterfaces() as NSArray? else {
+            print("🔍 NetworkMonitor: No WiFi interfaces available for nearby scan")
+            return
+        }
+        
+        for interface in interfaces {
+            if let interfaceName = interface as? String {
+                // Try to get additional network information that might include nearby networks
+                print("🔍 NetworkMonitor: Checking interface \(interfaceName) for nearby networks...")
+                
+                // Note: iOS severely restricts access to nearby WiFi networks for security
+                // We rely on the connected network's ANQP data primarily
+                // But we can check for cached Passpoint configurations
+                
+                if let networkList = CNCopyCurrentNetworkInfo(interfaceName as CFString) as NSDictionary? {
+                    // Check if we have any Passpoint or cached network information
+                    if let passpointInfo = networkList["PasspointInfo"] as? [String: Any] {
+                        print("🔍 NetworkMonitor: Found PasspointInfo in nearby scan: \(passpointInfo)")
+                        
+                        // Look for any acc-venue1 references in Passpoint data
+                        for (key, value) in passpointInfo {
+                            if let stringValue = value as? String, 
+                               stringValue.lowercased().contains("acc-venue1") {
+                                print("🎯 NetworkMonitor: Found acc-venue1 in nearby Passpoint data!")
+                                print("  - Key: \(key), Value: \(stringValue)")
+                                
+                                // Trigger SONY branding lock for nearby acc-venue1
+                                if !isLockedToSONY {
+                                    print("🔒 NetworkMonitor: LOCKING to SONY due to nearby acc-venue1 detection!")
+                                    isLockedToSONY = true
+                                    accVenue1NetworkDetected = true
+                                    
+                                    // Create synthetic network info for nearby acc-venue1
+                                    let nearbyNetworkInfo = NetworkInfo(
+                                        ssid: "Nearby-ACC-Venue1-Network",
+                                        bssid: nil,
+                                        realm: targetRealm,
+                                        isPasspoint: true,
+                                        signalStrength: nil,
+                                        venueName: "acc-venue1"
+                                    )
+                                    
+                                    delegate?.networkStatusChanged(isPasspointConnected: true, networkInfo: nearbyNetworkInfo)
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        print("🔍 NetworkMonitor: No nearby acc-venue1 networks detected in this scan")
+    }
+    
+    // Helper method to determine if SSID suggests we're still in ACC location
+    private func ssidLooksLikeACCLocation(_ ssid: String) -> Bool {
+        let ssidLower = ssid.lowercased()
+        
+        // Check for common ACC/SONY/venue-related SSID patterns
+        let accLocationPatterns = [
+            "acc", "sony", "venue", "acloudradius", "guest", "wifi",
+            "passpoint", "hotspot", "free", "public", "corp", "corporate"
+        ]
+        
+        for pattern in accLocationPatterns {
+            if ssidLower.contains(pattern) {
+                print("🔍 NetworkMonitor: SSID '\(ssid)' contains ACC location pattern '\(pattern)'")
+                return true
+            }
+        }
+        
+        print("🔍 NetworkMonitor: SSID '\(ssid)' does not match ACC location patterns")
+        return false
     }
     
     // Test specifically for user's ACLCloudRadius SSID

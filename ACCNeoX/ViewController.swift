@@ -17,6 +17,14 @@ class ViewController: UIViewController {
         print("🔵 ViewController viewDidLoad called")
         setupUI()
         setupNetworkMonitoring()
+        
+        // CRITICAL: Perform immediate network check after UI setup
+        // This ensures SONY branding shows immediately if connected to acc-venue1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            print("🔵 ViewController: Performing initial network check for acc-venue1")
+            self.networkMonitor.forceNetworkCheck()
+        }
+        
         print("🔵 ViewController setup completed")
     }
     
@@ -107,8 +115,8 @@ class ViewController: UIViewController {
         // Add debug gesture recognizers
         setupDebugGestures()
         
-        // Load default image
-        loadDefaultImage()
+        // Load placeholder image initially - will be replaced by network detection
+        loadPlaceholderImage()
         
         print("✅ Programmatic UI setup completed successfully")
     }
@@ -321,8 +329,11 @@ class ViewController: UIViewController {
         }
     }
     
-    private func loadDefaultImage() {
-        createNeoXImage()
+    private func loadPlaceholderImage() {
+        // Show neutral placeholder until network detection completes
+        // This prevents overriding SONY branding when acc-venue1 is detected
+        advertisementImageView.backgroundColor = .systemGray5
+        print("🔵 Loaded placeholder image - waiting for network detection")
     }
     
     private func updateUIForNetworkStatus(isACLCloudRadiusConnected: Bool, networkInfo: NetworkInfo?) {
@@ -331,6 +342,26 @@ class ViewController: UIViewController {
             
             self.currentNetworkInfo = networkInfo
             
+            // PRIORITY CHECK: If NetworkMonitor is locked to SONY (acc-venue1 detected), ALWAYS show SONY
+            if self.networkMonitor.isCurrentlyLockedToSONY() {
+                print("🔒 ViewController: NetworkMonitor is locked to SONY - maintaining SONY branding")
+                self.createSONYImage()
+                
+                if let info = networkInfo {
+                    if info.hasACCVenue1 || (info.venueName?.lowercased().contains("acc-venue1") == true) {
+                        self.statusLabel.text = "Device connected to venue=acc-venue1"
+                        print("🎯 SONY branding maintained due to acc-venue1 venue name")
+                    } else {
+                        self.statusLabel.text = "Connected to \(info.ssid)"
+                        print("🎯 SONY branding maintained due to locked state")
+                    }
+                } else {
+                    self.statusLabel.text = "Device connected to venue=acc-venue1"
+                }
+                return // EXIT - do not process other branding logic
+            }
+            
+            // NORMAL LOGIC: Only if not locked to SONY
             if isACLCloudRadiusConnected {
                 print("✅ Switching to SONY branding - connected to acloudradius.net realm or acc-venue1")
                 self.createSONYImage()
