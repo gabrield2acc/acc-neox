@@ -124,7 +124,20 @@ class NetworkMonitor: NSObject {
             let hasACCVenue1 = info.hasACCVenue1
             let venueNameLower = info.venueName?.lowercased() ?? ""
             let hasACCVenueName = venueNameLower.contains("acc-venue1") || venueNameLower.contains("acc venue1")
-            let isACCVenue1Network = hasACCVenue1 || hasACCVenueName
+            
+            // CRITICAL: Also check if SSID itself is "acloudradius" - this should ALWAYS trigger SONY
+            let ssidLower = info.ssid.lowercased()
+            let isACLCloudRadiusSSID = ssidLower == "acloudradius" || ssidLower == "acloudradius.net"
+            
+            let isACCVenue1Network = hasACCVenue1 || hasACCVenueName || isACLCloudRadiusSSID
+            
+            print("🔍 NetworkMonitor: DETAILED acc-venue1 detection for SSID '\(info.ssid)':")
+            print("  - Raw venue name: '\(info.venueName ?? "nil")'")
+            print("  - Venue name lowercased: '\(venueNameLower)'")
+            print("  - hasACCVenue1 (struct property): \(hasACCVenue1)")
+            print("  - hasACCVenueName (string check): \(hasACCVenueName)")
+            print("  - isACLCloudRadiusSSID (exact SSID): \(isACLCloudRadiusSSID)")
+            print("  - FINAL isACCVenue1Network: \(isACCVenue1Network)")
             
             // PRIORITY 1: Check if connected to acc-venue1 and lock SONY branding immediately
             if isACCVenue1Network {
@@ -215,10 +228,18 @@ class NetworkMonitor: NSObject {
             
             // Primary detection methods - SSID is most reliable
             let hasACLCloudRadiusRealm = info.isACLCloudRadiusRealm
-            let hasACLCloudRadiusSSID = ssidLower.contains("acloudradius") || 
+            
+            // CRITICAL: Exact "acloudradius" SSID match should ALWAYS trigger SONY
+            let isExactACLCloudRadiusSSID = ssidLower == "acloudradius" || ssidLower == "acloudradius.net"
+            let hasACLCloudRadiusSSID = isExactACLCloudRadiusSSID ||
+                                       ssidLower.contains("acloudradius") || 
                                        ssidLower.contains("test-acloudradius") ||
                                        ssidLower.contains("aclcloud") ||
                                        ssidLower.contains("cloudradius")
+            
+            print("🎯 CRITICAL SSID CHECK for '\(info.ssid)':")
+            print("  - isExactACLCloudRadiusSSID: \(isExactACLCloudRadiusSSID)")
+            print("  - hasACLCloudRadiusSSID: \(hasACLCloudRadiusSSID)")
             let hasACLCloudRadiusInRealm = realmLower.contains("acloudradius") || realmLower.contains("cloudradius")
             
             // Enhanced SSID pattern matching for various ACLCloudRadius network names
@@ -512,6 +533,15 @@ class NetworkMonitor: NSObject {
                     }
                 }
             }
+        }
+        
+        // Method 4: CRITICAL FALLBACK - If no ANQP venue detected but SSID is "acloudradius"
+        // treat it as having acc-venue1 venue name
+        let ssidLower = ssid.lowercased()
+        if ssidLower == "acloudradius" || ssidLower == "acloudradius.net" {
+            print("🎯 CRITICAL FALLBACK: SSID '\(ssid)' is acloudradius - assuming venue=acc-venue1")
+            print("🔍 This covers cases where ANQP venue data isn't exposed by iOS")
+            return "acc-venue1"
         }
         
         print("❌ NetworkMonitor: No ANQP venue name detected from access point for SSID: '\(ssid)'")
