@@ -60,7 +60,7 @@ class NetworkMonitor: NSObject {
         requestLocationPermissionIfNeeded()
         
         // Start with frequent checks for fast detection, maintain higher frequency for acc-venue1 networks
-        var checkInterval: TimeInterval = 1.0
+        let checkInterval: TimeInterval = 1.0
         monitoringTimer = Timer.scheduledTimer(withTimeInterval: checkInterval, repeats: true) { [weak self] timer in
             self?.checkCurrentNetwork()
             
@@ -223,7 +223,7 @@ class NetworkMonitor: NSObject {
             print("🔍 NetworkMonitor: Network changed: \(networkChanged)")
             
             // Enhanced ACLCloudRadius detection - more aggressive SSID-based detection
-            let ssidLower = info.ssid.lowercased()
+            // ssidLower already declared above - reusing it
             let realmLower = info.realm?.lowercased() ?? ""
             
             // Primary detection methods - SSID is most reliable
