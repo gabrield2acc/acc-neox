@@ -51,21 +51,39 @@ class NetworkMonitor: NSObject {
     }
     
     private func getCurrentWiFiStatus() -> (isConnected: Bool, networkName: String?) {
+        // Check if running in iOS Simulator
+        #if targetEnvironment(simulator)
+        print("🔍 NetworkMonitor: Running in iOS Simulator - simulating WiFi connection")
+        // In simulator, we'll simulate being connected to WiFi since the simulator 
+        // uses the host Mac's internet connection
+        return (true, "Simulator Network")
+        #else
+        // Real device WiFi detection
         guard let interfaces = CNCopySupportedInterfaces() as NSArray? else {
             print("❌ NetworkMonitor: No WiFi interfaces available")
             return (false, nil)
         }
         
+        print("🔍 NetworkMonitor: Checking \(interfaces.count) interface(s)")
+        
         for interface in interfaces {
-            if let interfaceInfo = CNCopyCurrentNetworkInfo(interface as! CFString) as NSDictionary?,
-               let ssid = interfaceInfo[kCNNetworkInfoKeySSID as String] as? String {
-                print("✅ NetworkMonitor: Connected to WiFi - SSID: '\(ssid)'")
-                return (true, ssid)
+            print("🔍 NetworkMonitor: Checking interface: \(interface)")
+            if let interfaceInfo = CNCopyCurrentNetworkInfo(interface as! CFString) as NSDictionary? {
+                print("🔍 NetworkMonitor: Interface info: \(interfaceInfo)")
+                if let ssid = interfaceInfo[kCNNetworkInfoKeySSID as String] as? String {
+                    print("✅ NetworkMonitor: Connected to WiFi - SSID: '\(ssid)'")
+                    return (true, ssid)
+                } else {
+                    print("🔍 NetworkMonitor: Interface info available but no SSID found")
+                }
+            } else {
+                print("🔍 NetworkMonitor: No interface info for: \(interface)")
             }
         }
         
-        print("🔍 NetworkMonitor: No WiFi connection detected")
+        print("🔍 NetworkMonitor: No WiFi connection detected on real device")
         return (false, nil)
+        #endif
     }
     
     // Manual check for immediate updates
