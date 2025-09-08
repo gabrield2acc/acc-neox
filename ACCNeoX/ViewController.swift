@@ -1,5 +1,6 @@
 import UIKit
 import SafariServices
+import CoreLocation
 
 class ViewController: UIViewController {
     
@@ -9,15 +10,24 @@ class ViewController: UIViewController {
     private var statusLabel: UILabel!
     
     private let networkMonitor = NetworkMonitor.shared
+    private let locationManager = CLLocationManager()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         print("🔵 ViewController: Starting with simplified WiFi-based branding")
         
         setupUI()
+        requestLocationPermission()
         setupNetworkMonitoring()
         
         print("🔵 ViewController: Setup completed")
+    }
+    
+    private func requestLocationPermission() {
+        // Request location permission for WiFi SSID access
+        print("🔵 ViewController: Requesting location permission for WiFi detection")
+        locationManager.delegate = self
+        locationManager.requestWhenInUseAuthorization()
     }
     
     private func setupNetworkMonitoring() {
@@ -236,6 +246,28 @@ extension ViewController: NetworkMonitorDelegate {
                 // Not connected to WiFi → Show neoX branding
                 self.showNeoXBranding()
             }
+        }
+    }
+}
+
+// MARK: - CLLocationManagerDelegate
+
+extension ViewController: CLLocationManagerDelegate {
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        print("🔵 ViewController: Location authorization changed to: \(status)")
+        
+        switch status {
+        case .authorizedWhenInUse, .authorizedAlways:
+            print("✅ Location permission granted - WiFi SSID detection enabled")
+            // Force a network check now that we have permission
+            networkMonitor.forceWiFiCheck()
+        case .denied, .restricted:
+            print("❌ Location permission denied - WiFi SSID detection limited")
+            // Network framework will still detect WiFi interface without SSID
+        case .notDetermined:
+            print("⏳ Location permission not determined")
+        @unknown default:
+            print("❓ Unknown location permission status")
         }
     }
 }
