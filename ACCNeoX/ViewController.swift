@@ -7,6 +7,7 @@ class ViewController: UIViewController {
     private var titleLabel: UILabel!
     private var advertisementImageView: UIImageView!
     private var profileButton: UIButton!
+    private var testButton: UIButton!
     private var statusLabel: UILabel!
     
     private let networkMonitor = NetworkMonitor.shared
@@ -61,7 +62,7 @@ class ViewController: UIViewController {
         advertisementImageView.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(advertisementImageView)
         
-        // Button
+        // Main Button
         profileButton = UIButton(type: .system)
         profileButton.setTitle("Access Free WiFi", for: .normal)
         profileButton.backgroundColor = .systemOrange
@@ -71,6 +72,17 @@ class ViewController: UIViewController {
         profileButton.translatesAutoresizingMaskIntoConstraints = false
         profileButton.addTarget(self, action: #selector(buttonTapped), for: .touchUpInside)
         stackView.addArrangedSubview(profileButton)
+        
+        // Test Button (for debugging branding states)
+        testButton = UIButton(type: .system)
+        testButton.setTitle("🧪 Test Branding States", for: .normal)
+        testButton.backgroundColor = .systemBlue
+        testButton.setTitleColor(.white, for: .normal)
+        testButton.layer.cornerRadius = 8
+        testButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
+        testButton.translatesAutoresizingMaskIntoConstraints = false
+        testButton.addTarget(self, action: #selector(testButtonTapped), for: .touchUpInside)
+        stackView.addArrangedSubview(testButton)
         
         // Status label
         statusLabel = UILabel()
@@ -92,7 +104,10 @@ class ViewController: UIViewController {
             advertisementImageView.heightAnchor.constraint(equalToConstant: 200),
             
             profileButton.widthAnchor.constraint(equalToConstant: 200),
-            profileButton.heightAnchor.constraint(equalToConstant: 50)
+            profileButton.heightAnchor.constraint(equalToConstant: 50),
+            
+            testButton.widthAnchor.constraint(equalToConstant: 200),
+            testButton.heightAnchor.constraint(equalToConstant: 44)
         ])
         
         // Start with neoX image (default state)
@@ -126,6 +141,19 @@ class ViewController: UIViewController {
                 }
             }
         }
+    }
+    
+    @objc private func testButtonTapped() {
+        print("🧪 Test button tapped - testing branding states")
+        
+        // Visual feedback
+        testButton.backgroundColor = .systemPurple
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.testButton.backgroundColor = .systemBlue
+        }
+        
+        // Run the branding test sequence
+        networkMonitor.testWiFiStates()
     }
     
     private func openInSafariViewController(url: URL) {

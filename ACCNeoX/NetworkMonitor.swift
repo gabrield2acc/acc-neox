@@ -1,5 +1,6 @@
 import Foundation
 import SystemConfiguration.CaptiveNetwork
+import SystemConfiguration
 import Network
 
 protocol NetworkMonitorDelegate: AnyObject {
@@ -45,29 +46,25 @@ class NetworkMonitor: NSObject {
     
     private func handleNetworkPathUpdate(_ path: NWPath) {
         let isConnected = path.status == .satisfied
-        var connectionType = "Unknown"
-        var networkName: String?
-        
-        // Check if using WiFi interface
         let isWiFi = path.usesInterfaceType(.wifi)
-        
-        if isWiFi {
-            connectionType = "WiFi"
-            networkName = getWiFiNetworkName() ?? "WiFi Network"
-        } else if path.usesInterfaceType(.cellular) {
-            connectionType = "Cellular"
-        } else if path.usesInterfaceType(.wiredEthernet) {
-            connectionType = "Ethernet"
-        }
+        let isCellular = path.usesInterfaceType(.cellular)
         
         print("🔍 NetworkMonitor: Network path update")
         print("  - Status: \(path.status)")
         print("  - Connected: \(isConnected)")
-        print("  - WiFi: \(isWiFi)")
-        print("  - Connection Type: \(connectionType)")
+        print("  - WiFi Interface: \(isWiFi)")
+        print("  - Cellular Interface: \(isCellular)")
+        print("  - Available Interfaces: \(path.availableInterfaces.map { $0.name })")
         
-        // For our app logic: connected to WiFi = show SONY, otherwise show neoX
-        delegate?.wifiStatusChanged(isConnected: isWiFi && isConnected, networkName: networkName)
+        // Simple logic: if we have WiFi interface and we're connected, show SONY
+        if isConnected && isWiFi {
+            let networkName = getWiFiNetworkName() ?? "WiFi Network"
+            print("✅ NetworkMonitor: WiFi detected - showing SONY branding")
+            delegate?.wifiStatusChanged(isConnected: true, networkName: networkName)
+        } else {
+            print("📱 NetworkMonitor: No WiFi or not connected - showing neoX branding")
+            delegate?.wifiStatusChanged(isConnected: false, networkName: nil)
+        }
     }
     
     func stopMonitoring() {
@@ -120,18 +117,98 @@ class NetworkMonitor: NSObject {
     }
     
     private func getCurrentWiFiStatus() -> (isConnected: Bool, networkName: String?) {
-        // This method is now primarily used as backup - the main detection uses Network framework
+        #if targetEnvironment(simulator)
+        print("🔍 NetworkMonitor: Simulator - always show SONY branding")
+        return (true, "Simulator Network")
+        #else
+        
+        // Try multiple methods to detect WiFi connection
+        print("🔍 NetworkMonitor: Backup WiFi detection on real device")
+        
+        // Method 1: Try to get WiFi network name
         let networkName = getWiFiNetworkName()
-        let hasWiFiName = networkName != nil
+        if networkName != nil {
+            print("✅ NetworkMonitor: WiFi SSID found - definitely connected to WiFi")
+            return (true, networkName)
+        }
         
-        print("🔍 NetworkMonitor: Backup WiFi check - SSID available: \(hasWiFiName)")
+        // Method 2: Check network reachability with WiFi-specific flags
+        var zeroAddress = sockaddr_in()
+        zeroAddress.sin_len = UInt8(MemoryLayout.size(ofValue: zeroAddress))
+        zeroAddress.sin_family = sa_family_t(AF_INET)
         
-        // If we can get a network name, we're likely connected to WiFi
-        return (hasWiFiName, networkName)
+        guard let defaultRouteReachability = withUnsafePointer(to: &zeroAddress, {
+            $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { zeroSockAddress in
+                SCNetworkReachabilityCreateWithAddress(nil, zeroSockAddress)
+            }
+        }) else {
+            print("❌ NetworkMonitor: Could not create reachability reference")
+            return (false, nil)
+        }
+        
+        var flags: SCNetworkReachabilityFlags = []
+        if !SCNetworkReachabilityGetFlags(defaultRouteReachability, &flags) {
+            print("❌ NetworkMonitor: Could not get reachability flags")
+            return (false, nil)
+        }
+        
+        let isReachable = flags.contains(.reachable)
+        let needsConnection = flags.contains(.connectionRequired)
+        let canConnectAutomatically = flags.contains(.connectionOnDemand) || flags.contains(.connectionOnTraffic)
+        let canConnectWithoutUserInteraction = canConnectAutomatically && !flags.contains(.interventionRequired)
+        let isNetworkReachable = isReachable && (!needsConnection || canConnectWithoutUserInteraction)
+        
+        // Check if we're NOT on cellular (indicating WiFi)
+        let isOnWWAN = flags.contains(.isWWAN)
+        let isWiFiConnection = isNetworkReachable && !isOnWWAN
+        
+        print("🔍 NetworkMonitor: Reachability analysis:")
+        print("  - Reachable: \(isReachable)")
+        print("  - Network reachable: \(isNetworkReachable)")
+        print("  - On WWAN (cellular): \(isOnWWAN)")
+        print("  - WiFi connection: \(isWiFiConnection)")
+        
+        if isWiFiConnection {
+            print("✅ NetworkMonitor: WiFi connection detected via reachability")
+            return (true, "WiFi Network")
+        } else {
+            print("📱 NetworkMonitor: No WiFi connection - likely cellular or no connection")
+            return (false, nil)
+        }
+        #endif
     }
     
     // Manual check for immediate updates
     func forceWiFiCheck() {
         checkWiFiConnection()
+    }
+    
+    // Test method to force different states for testing
+    func testWiFiStates() {
+        print("🧪 NetworkMonitor: Testing WiFi states")
+        
+        // Test neoX branding (no WiFi)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            print("🧪 Testing neoX branding (no WiFi)")
+            self.delegate?.wifiStatusChanged(isConnected: false, networkName: nil)
+        }
+        
+        // Test SONY branding (WiFi connected) after 5 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+            print("🧪 Testing SONY branding (WiFi connected)")
+            self.delegate?.wifiStatusChanged(isConnected: true, networkName: "Test WiFi Network")
+        }
+        
+        // Back to neoX after 10 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10.0) {
+            print("🧪 Back to neoX branding")
+            self.delegate?.wifiStatusChanged(isConnected: false, networkName: nil)
+        }
+        
+        // Back to actual detection after 15 seconds
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
+            print("🧪 Resuming actual WiFi detection")
+            self.forceWiFiCheck()
+        }
     }
 }
