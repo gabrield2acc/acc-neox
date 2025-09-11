@@ -5,6 +5,7 @@ import Network
 
 protocol NetworkMonitorDelegate: AnyObject {
     func wifiStatusChanged(isConnected: Bool, networkName: String?)
+    func wifiCompanyDetected(isConnected: Bool, networkName: String?, companyInfo: SSIDAnalyzer.CompanyInfo?)
 }
 
 class NetworkMonitor: NSObject {
@@ -56,14 +57,21 @@ class NetworkMonitor: NSObject {
         print("  - Cellular Interface: \(isCellular)")
         print("  - Available Interfaces: \(path.availableInterfaces.map { $0.name })")
         
-        // Simple logic: if we have WiFi interface and we're connected, show SONY
+        // Enhanced logic with company detection
         if isConnected && isWiFi {
             let networkName = getWiFiNetworkName() ?? "WiFi Network"
-            print("✅ NetworkMonitor: WiFi detected - showing SONY branding")
+            print("✅ NetworkMonitor: WiFi detected - analyzing SSID for company info")
+            
+            // Analyze SSID for company information
+            let companyInfo = SSIDAnalyzer.shared.analyzeSSID(networkName)
+            
+            // Call both delegates for backward compatibility and new functionality
             delegate?.wifiStatusChanged(isConnected: true, networkName: networkName)
+            delegate?.wifiCompanyDetected(isConnected: true, networkName: networkName, companyInfo: companyInfo)
         } else {
-            print("📱 NetworkMonitor: No WiFi or not connected - showing neoX branding")
+            print("📱 NetworkMonitor: No WiFi or not connected - showing default branding")
             delegate?.wifiStatusChanged(isConnected: false, networkName: nil)
+            delegate?.wifiCompanyDetected(isConnected: false, networkName: nil, companyInfo: nil)
         }
     }
     
@@ -89,7 +97,14 @@ class NetworkMonitor: NSObject {
         print("  - Connected: \(isConnected)")
         print("  - Network: \(networkName ?? "None")")
         
+        // Analyze company info if connected to WiFi
+        var companyInfo: SSIDAnalyzer.CompanyInfo?
+        if isConnected, let networkName = networkName {
+            companyInfo = SSIDAnalyzer.shared.analyzeSSID(networkName)
+        }
+        
         delegate?.wifiStatusChanged(isConnected: isConnected, networkName: networkName)
+        delegate?.wifiCompanyDetected(isConnected: isConnected, networkName: networkName, companyInfo: companyInfo)
     }
     
     private func getWiFiNetworkName() -> String? {

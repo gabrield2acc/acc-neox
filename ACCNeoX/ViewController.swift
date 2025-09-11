@@ -9,9 +9,14 @@ class ViewController: UIViewController {
     private var profileButton: UIButton!
     private var testButton: UIButton!
     private var statusLabel: UILabel!
+    private var loadingIndicator: UIActivityIndicatorView!
     
     private let networkMonitor = NetworkMonitor.shared
     private let locationManager = CLLocationManager()
+    
+    // AI Branding properties
+    private var currentCompanyInfo: SSIDAnalyzer.CompanyInfo?
+    private var isGeneratingImage = false
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -93,6 +98,13 @@ class ViewController: UIViewController {
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         stackView.addArrangedSubview(statusLabel)
         
+        // Loading indicator
+        loadingIndicator = UIActivityIndicatorView(style: .large)
+        loadingIndicator.color = .white
+        loadingIndicator.hidesWhenStopped = true
+        loadingIndicator.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(loadingIndicator)
+        
         // Constraints
         NSLayoutConstraint.activate([
             stackView.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -107,7 +119,10 @@ class ViewController: UIViewController {
             profileButton.heightAnchor.constraint(equalToConstant: 50),
             
             testButton.widthAnchor.constraint(equalToConstant: 200),
-            testButton.heightAnchor.constraint(equalToConstant: 44)
+            testButton.heightAnchor.constraint(equalToConstant: 44),
+            
+            loadingIndicator.centerXAnchor.constraint(equalTo: advertisementImageView.centerXAnchor),
+            loadingIndicator.centerYAnchor.constraint(equalTo: advertisementImageView.centerYAnchor)
         ])
         
         // Start with neoX image (default state)
@@ -267,14 +282,224 @@ extension ViewController: NetworkMonitorDelegate {
             print("  - Connected: \(isConnected)")
             print("  - Network: \(networkName ?? "None")")
             
-            if isConnected, let networkName = networkName {
-                // Connected to WiFi → Show SONY branding
-                self.showSONYBranding(networkName: networkName)
-            } else {
-                // Not connected to WiFi → Show neoX branding
+            // Keep backward compatibility - this method still works for basic functionality
+            if !isConnected {
                 self.showNeoXBranding()
             }
         }
+    }
+    
+    func wifiCompanyDetected(isConnected: Bool, networkName: String?, companyInfo: SSIDAnalyzer.CompanyInfo?) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            
+            print("🏢 ViewController: Company detection result")
+            print("  - Connected: \(isConnected)")
+            print("  - Network: \(networkName ?? "None")")
+            print("  - Company: \(companyInfo?.name ?? "None")")
+            
+            if isConnected, let companyInfo = companyInfo {
+                // Company detected → Generate AI branding
+                self.currentCompanyInfo = companyInfo
+                self.generateAIBranding(for: companyInfo, ssid: networkName ?? "WiFi")
+            } else if isConnected {
+                // WiFi connected but no company detected → Show generic WiFi branding
+                self.showGenericWiFiBranding(networkName: networkName ?? "WiFi Network")
+            } else {
+                // Not connected → Show neoX branding
+                self.currentCompanyInfo = nil
+                self.showNeoXBranding()
+            }
+        }
+    }
+}
+
+// MARK: - AI Branding Methods
+
+extension ViewController {
+    private func generateAIBranding(for companyInfo: SSIDAnalyzer.CompanyInfo, ssid: String) {
+        guard !isGeneratingImage else {
+            print("🤖 ViewController: AI branding generation already in progress")
+            return
+        }
+        
+        print("🤖 ViewController: Starting AI branding generation for \(companyInfo.name)")
+        
+        isGeneratingImage = true
+        loadingIndicator.startAnimating()
+        
+        // Show loading state
+        statusLabel.text = "Generating \(companyInfo.name) branding..."
+        
+        let request = AIBrandingService.BrandingRequest(
+            ssid: ssid,
+            companyInfo: companyInfo,
+            style: .professional,
+            dimensions: .standard
+        )
+        
+        AIBrandingService.shared.generateBranding(for: request) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                self.isGeneratingImage = false
+                self.loadingIndicator.stopAnimating()
+                
+                switch result {
+                case .success(let brandingResponse):
+                    print("✅ ViewController: AI branding generated successfully")
+                    self.displayAIBranding(brandingResponse)
+                    
+                case .failure(let error):
+                    print("❌ ViewController: AI branding generation failed: \(error)")
+                    // Fallback to generic branding
+                    self.showGenericWiFiBranding(networkName: ssid)
+                }
+            }
+        }
+    }
+    
+    private func displayAIBranding(_ branding: AIBrandingService.BrandingResponse) {
+        print("🎨 ViewController: Displaying AI-generated branding for \(branding.companyName)")
+        
+        // Load image from URL or local cache
+        loadImageFromBranding(branding) { [weak self] image in
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                
+                if let image = image {
+                    self.advertisementImageView.image = image
+                    self.statusLabel.text = "Connected to \(branding.companyName)"
+                    print("✅ ViewController: AI branding image displayed successfully")
+                } else {
+                    print("❌ ViewController: Failed to load AI branding image")
+                    // Fallback to text-based branding
+                    self.showTextBranding(companyName: branding.companyName)
+                }
+            }
+        }
+    }
+    
+    private func loadImageFromBranding(_ branding: AIBrandingService.BrandingResponse, completion: @escaping (UIImage?) -> Void) {
+        // Check if it's a local file URL first
+        if branding.imageURL.hasPrefix("file://"), let url = URL(string: branding.imageURL) {
+            // Load from local file
+            if let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
+                completion(image)
+                return
+            }
+        }
+        
+        // Load from remote URL
+        guard let url = URL(string: branding.imageURL) else {
+            completion(nil)
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, _, _ in
+            guard let data = data, let image = UIImage(data: data) else {
+                completion(nil)
+                return
+            }
+            completion(image)
+        }.resume()
+    }
+    
+    private func showGenericWiFiBranding(networkName: String) {
+        print("🎨 ViewController: Showing generic WiFi branding for \(networkName)")
+        
+        // Create a generic WiFi branded image
+        let image = createGenericWiFiImage(networkName: networkName)
+        advertisementImageView.image = image
+        statusLabel.text = "Connected to \(networkName)"
+    }
+    
+    private func showTextBranding(companyName: String) {
+        print("🎨 ViewController: Showing text-based branding for \(companyName)")
+        
+        let image = createTextBrandingImage(companyName: companyName)
+        advertisementImageView.image = image
+        statusLabel.text = "Connected to \(companyName)"
+    }
+    
+    private func createGenericWiFiImage(networkName: String) -> UIImage {
+        let size = CGSize(width: 300, height: 200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            
+            // Blue gradient background for WiFi
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                    colors: [UIColor.systemBlue.cgColor, UIColor.white.cgColor] as CFArray,
+                                    locations: [0.0, 1.0])!
+            
+            context.cgContext.drawLinearGradient(gradient,
+                                               start: CGPoint(x: 0, y: 0),
+                                               end: CGPoint(x: size.width, y: size.height),
+                                               options: [])
+            
+            // WiFi symbol and network name
+            let text = "📶 \(networkName)"
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.boldSystemFont(ofSize: 18),
+                .foregroundColor: UIColor.black
+            ]
+            
+            let textSize = text.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            text.draw(in: textRect, withAttributes: attributes)
+        }
+    }
+    
+    private func createTextBrandingImage(companyName: String) -> UIImage {
+        let size = CGSize(width: 300, height: 200)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        
+        return renderer.image { context in
+            let rect = CGRect(origin: .zero, size: size)
+            
+            // Company-based color background
+            let backgroundColor = generateCompanyColor(from: companyName)
+            backgroundColor.setFill()
+            context.fill(rect)
+            
+            // Company name
+            let attributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.boldSystemFont(ofSize: 28),
+                .foregroundColor: UIColor.white
+            ]
+            
+            let textSize = companyName.size(withAttributes: attributes)
+            let textRect = CGRect(
+                x: (size.width - textSize.width) / 2,
+                y: (size.height - textSize.height) / 2,
+                width: textSize.width,
+                height: textSize.height
+            )
+            
+            companyName.draw(in: textRect, withAttributes: attributes)
+        }
+    }
+    
+    private func generateCompanyColor(from companyName: String) -> UIColor {
+        let hash = companyName.hash
+        let red = CGFloat((hash & 0xFF0000) >> 16) / 255.0
+        let green = CGFloat((hash & 0x00FF00) >> 8) / 255.0
+        let blue = CGFloat(hash & 0x0000FF) / 255.0
+        
+        // Ensure minimum brightness for readability
+        let adjustedRed = max(red * 0.7, 0.3)
+        let adjustedGreen = max(green * 0.7, 0.3)
+        let adjustedBlue = max(blue * 0.7, 0.3)
+        
+        return UIColor(red: adjustedRed, green: adjustedGreen, blue: adjustedBlue, alpha: 1.0)
     }
 }
 

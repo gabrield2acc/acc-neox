@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		2725BD1F896F0E615CB66C27 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5666DD501677A6002F40D2BD /* ViewController.swift */; };
 		36E7ABCF44918FE7BB9E05EA /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE65358BEA575339D74E22BE /* NetworkMonitor.swift */; };
+		A1B2C3D4E5F6789012345678 /* SSIDAnalyzer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678A1 /* SSIDAnalyzer.swift */; };
+		C3D4E5F6789012345678A1B2 /* AIBrandingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678A1B2C3 /* AIBrandingService.swift */; };
 		D5ECE5C9326FDA0F59878606 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 167A58784D8E0E6EB8A2092E /* Assets.xcassets */; };
 		DAB272B55C30A4BED843E983 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3A07C75FB3AF8B5B3FFF8D5 /* SceneDelegate.swift */; };
 		EBCDDA32466836F57BE29F13 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 882B2CFBE41019F889677110 /* AppDelegate.swift */; };
@@ -20,7 +22,9 @@
 		5666DD501677A6002F40D2BD /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
 		801DEEFC9AD537F68803773D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		882B2CFBE41019F889677110 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6789012345678A1 /* SSIDAnalyzer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SSIDAnalyzer.swift; sourceTree = "<group>"; };
 		B3A07C75FB3AF8B5B3FFF8D5 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		D4E5F6789012345678A1B2C3 /* AIBrandingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIBrandingService.swift; sourceTree = "<group>"; };
 		EE65358BEA575339D74E22BE /* NetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMonitor.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -36,11 +40,13 @@
 		A185E82B575985CF045859CD /* ACCNeoX */ = {
 			isa = PBXGroup;
 			children = (
+				D4E5F6789012345678A1B2C3 /* AIBrandingService.swift */,
 				882B2CFBE41019F889677110 /* AppDelegate.swift */,
 				167A58784D8E0E6EB8A2092E /* Assets.xcassets */,
 				801DEEFC9AD537F68803773D /* Info.plist */,
 				EE65358BEA575339D74E22BE /* NetworkMonitor.swift */,
 				B3A07C75FB3AF8B5B3FFF8D5 /* SceneDelegate.swift */,
+				B2C3D4E5F6789012345678A1 /* SSIDAnalyzer.swift */,
 				5666DD501677A6002F40D2BD /* ViewController.swift */,
 			);
 			path = ACCNeoX;
@@ -125,9 +131,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C3D4E5F6789012345678A1B2 /* AIBrandingService.swift in Sources */,
 				EBCDDA32466836F57BE29F13 /* AppDelegate.swift in Sources */,
 				36E7ABCF44918FE7BB9E05EA /* NetworkMonitor.swift in Sources */,
 				DAB272B55C30A4BED843E983 /* SceneDelegate.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* SSIDAnalyzer.swift in Sources */,
 				2725BD1F896F0E615CB66C27 /* ViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
